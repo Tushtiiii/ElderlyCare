@@ -338,3 +338,66 @@ CREATE INDEX IF NOT EXISTS idx_ha_elder_status
 
 CREATE INDEX IF NOT EXISTS idx_ha_created_at
     ON health_alerts (created_at);
+
+
+-- =============================================================================
+-- 9.  GEOFENCES TABLE
+--
+--  Design decisions:
+--  • Geofencing is used by the mobile app (Android Native API) to monitor
+--    entry/exit events.
+--  • Center latitude/longitude and radius (meters) define the circular safe zone.
+--  • Only ONE active geofence is allowed per elder to simplify monitoring
+--    on the device.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS geofences (
+    id                  UUID            NOT NULL DEFAULT gen_random_uuid(),
+    elder_id            UUID            NOT NULL,
+    guardian_id         UUID            NOT NULL,
+    center_latitude     DOUBLE PRECISION NOT NULL,
+    center_longitude    DOUBLE PRECISION NOT NULL,
+    radius_meters       INTEGER         NOT NULL,
+    is_active           BOOLEAN         NOT NULL DEFAULT TRUE,
+    created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+
+    -- ── Primary Key ─────────────────────────────────────────────────────────
+    CONSTRAINT pk_geofences PRIMARY KEY (id),
+
+    -- ── Foreign Keys ───────────────────────────────────────────────────────
+    CONSTRAINT fk_geofence_elder
+        FOREIGN KEY (elder_id)
+        REFERENCES users (id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_geofence_guardian
+        FOREIGN KEY (guardian_id)
+        REFERENCES users (id)
+        ON DELETE CASCADE,
+
+    -- ── Check Constraints ──────────────────────────────────────────────────
+    CONSTRAINT chk_geofence_lat
+        CHECK (center_latitude BETWEEN -90 AND 90),
+
+    CONSTRAINT chk_geofence_lng
+        CHECK (center_longitude BETWEEN -180 AND 180),
+
+    CONSTRAINT chk_geofence_radius
+        CHECK (radius_meters BETWEEN 50 AND 5000)
+);
+
+-- ── Indexes on geofences ─────────────────────────────────────────────────────
+
+CREATE INDEX IF NOT EXISTS idx_geofence_elder_id
+    ON geofences (elder_id);
+
+CREATE INDEX IF NOT EXISTS idx_geofence_guardian_id
+    ON geofences (guardian_id);
+
+CREATE INDEX IF NOT EXISTS idx_geofence_is_active
+    ON geofences (is_active);
+
+CREATE INDEX IF NOT EXISTS idx_geofence_elder_active
+    ON geofences (elder_id, is_active)
+    WHERE is_active = TRUE;
