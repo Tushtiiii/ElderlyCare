@@ -1,36 +1,36 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
-import { useAuth } from '../../context/AuthContext';
-import { getLatestVitals } from '../../api/vitals';
-import { getActiveAlerts, acknowledgeAlert } from '../../api/alerts';
+import { acknowledgeAlert, getActiveAlerts } from '../../api/alerts';
 import { getActiveMedications } from '../../api/medications';
-import { getIncomingPendingRequests, getSentPendingRequests } from '../../api/relationships';
+import { getElderNetwork, getIncomingPendingRequests, getSentPendingRequests } from '../../api/relationships';
+import { getLatestVitals } from '../../api/vitals';
 import {
-  VitalRecordResponse,
-  HealthAlertResponse,
-  MedicationResponse,
-  RelationshipResponse,
-  MainStackParamList,
-} from '../../types';
-import { COLORS, FONT_SIZE, RADIUS, SPACING, SHADOW } from '../../theme';
-import {
-  LoadingState,
   AlertBanner,
-  VitalCard,
+  EmptyState,
+  LoadingState,
   MedicationCard,
   SummaryCard,
-  EmptyState,
+  VitalCard,
 } from '../../components/common';
+import { useAuth } from '../../context/AuthContext';
+import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
+import {
+  HealthAlertResponse,
+  MainStackParamList,
+  MedicationResponse,
+  RelationshipResponse,
+  VitalRecordResponse,
+} from '../../types';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 
@@ -43,24 +43,27 @@ export default function ElderDashboardScreen() {
   const [medications, setMedications] = useState<MedicationResponse[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<RelationshipResponse[]>([]);
   const [sentRequests, setSentRequests] = useState<RelationshipResponse[]>([]);
+  const [careTeam, setCareTeam] = useState<RelationshipResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
     try {
-      const [v, a, m, incoming, sent] = await Promise.all([
+      const [v, a, m, incoming, sent, network] = await Promise.all([
         getLatestVitals(user.id),
         getActiveAlerts(user.id),
         getActiveMedications(user.id),
         getIncomingPendingRequests(),
         getSentPendingRequests(),
+        getElderNetwork(user.id),
       ]);
       setVitals(v);
       setAlerts(a);
       setMedications(m);
       setIncomingRequests(incoming);
       setSentRequests(sent);
+      setCareTeam(network);
     } catch {}
   }, [user]);
 
@@ -88,6 +91,7 @@ export default function ElderDashboardScreen() {
   if (loading) return <LoadingState message="Loading your health data…" />;
 
   const abnormalCount = vitals.filter(v => v.isAbnormal).length;
+  const careCode = user?.id?.slice(0, 8) ?? '';
 
   return (
     <ScrollView
@@ -106,6 +110,31 @@ export default function ElderDashboardScreen() {
         <Text style={styles.name}>{user?.name} 👴</Text>
         <Text style={styles.bannerSub}>Here's your health overview</Text>
       </View>
+
+      {/* Shareable care code & care team */}
+      {user && (
+        <View style={[styles.careCard, SHADOW.small]}>
+          <Text style={styles.careCodeLabel}>Your care code</Text>
+          <Text style={styles.careCodeValue} selectable>
+            {careCode}
+          </Text>
+          <Text style={styles.careCodeHint}>
+            Share this code with guardians, doctors, and pathologists so they
+            know they are linking to the right profile.
+          </Text>
+
+          {careTeam.length > 0 && (
+            <View style={styles.careTeamSection}>
+              <Text style={styles.careTeamTitle}>Care Team</Text>
+              {careTeam.map(rel => (
+                <Text key={rel.id} style={styles.careTeamItem}>
+                  {rel.child.name} — {rel.child.role}
+                </Text>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Pending Request Notifications */}
       {incomingRequests.length > 0 && (
@@ -247,6 +276,45 @@ const styles = StyleSheet.create({
   welcome: { fontSize: FONT_SIZE.sm, color: 'rgba(255,255,255,0.8)' },
   name: { fontSize: FONT_SIZE.xl, fontWeight: '800', color: '#fff', marginTop: 2 },
   bannerSub: { color: 'rgba(255,255,255,0.85)', fontSize: FONT_SIZE.sm, marginTop: SPACING.xs },
+  careCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  careCodeLabel: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.mutedText ?? 'rgba(0,0,0,0.6)',
+    marginBottom: 2,
+  },
+  careCodeValue: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    color: COLORS.primary,
+    marginBottom: SPACING.xs,
+  },
+  careCodeHint: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.mutedText ?? 'rgba(0,0,0,0.6)',
+    marginBottom: SPACING.sm,
+  },
+  careTeamSection: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.08)',
+    paddingTop: SPACING.sm,
+  },
+  careTeamTitle: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  careTeamItem: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.text,
+    marginBottom: 2,
+  },
   section: { marginBottom: SPACING.md },
   sectionTitle: {
     fontSize: FONT_SIZE.lg,

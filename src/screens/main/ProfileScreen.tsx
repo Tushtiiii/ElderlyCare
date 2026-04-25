@@ -1,16 +1,14 @@
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
-  Alert,
-  Platform,
+  View,
 } from 'react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import { COLORS, FONT_SIZE, RADIUS, SPACING, SHADOW } from '../../theme';
+import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
 
 function InfoRow({
   icon,
@@ -37,18 +35,9 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: () => logout(),
-        },
-      ],
-    );
+    // Directly log out without an intermediate native Alert, to ensure
+    // consistent behavior across platforms (including web).
+    logout();
   };
 
   const isElder = user?.role === 'ELDER';

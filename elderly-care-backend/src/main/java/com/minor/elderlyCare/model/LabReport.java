@@ -1,14 +1,34 @@
 package com.minor.elderlyCare.model;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * Stores lab test reports for an elder.
@@ -45,10 +65,17 @@ public class LabReport {
     @Column(name = "test_name", nullable = false, length = 200)
     private String testName;
 
-    @NotBlank
     @Size(max = 500)
-    @Column(name = "result", nullable = false, length = 500)
+    @Column(name = "result", length = 500)
     private String result;
+
+    @Size(max = 200)
+    @Column(name = "uploaded_by", length = 200)
+    private String uploadedBy;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "dynamic_data")
+    private Map<String, Object> dynamicData;
 
     @NotNull
     @Column(name = "test_date", nullable = false)

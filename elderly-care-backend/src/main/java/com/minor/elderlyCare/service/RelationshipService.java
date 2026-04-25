@@ -1,5 +1,13 @@
 package com.minor.elderlyCare.service;
 
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.minor.elderlyCare.dto.request.RelationshipCodeRequest;
 import com.minor.elderlyCare.dto.request.RelationshipRequest;
 import com.minor.elderlyCare.dto.response.RelationshipResponse;
 import com.minor.elderlyCare.exception.DuplicateResourceException;
@@ -10,13 +18,8 @@ import com.minor.elderlyCare.model.Role;
 import com.minor.elderlyCare.model.User;
 import com.minor.elderlyCare.repository.ElderChildRelationshipRepository;
 import com.minor.elderlyCare.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +27,7 @@ public class RelationshipService {
 
     private final UserRepository                   userRepository;
     private final ElderChildRelationshipRepository relationshipRepository;
+    private final ElderAccessService               elderAccessService;
 
     // ── Request a monitoring connection ───────────────────────────────────────
 
@@ -44,16 +48,21 @@ public class RelationshipService {
                     "You cannot send a monitoring request to yourself.");
         }
 
-        // Roles must be complementary
-        if (currentUser.getRole() == targetUser.getRole()) {
+        // Exactly one participant must be an ELDER; the other is a viewer
+        // (CHILD / DOCTOR / PATHOLOGIST).
+        boolean currentIsElder = currentUser.getRole() == Role.ELDER;
+        boolean targetIsElder  = targetUser.getRole() == Role.ELDER;
+
+        if (currentIsElder == targetIsElder) {
+            // Either both elders or both non-elders → invalid pair
             throw new IllegalStateException(
-                    "Both users have the same role (" + currentUser.getRole() + "). "
-                    + "A relationship must connect one ELDER and one CHILD.");
+                "A monitoring relationship must connect exactly one ELDER " +
+                    "and one non-elder viewer (CHILD, DOCTOR, or PATHOLOGIST).");
         }
 
-        // Resolve who is elder and who is child
-        User elder = currentUser.getRole() == Role.ELDER ? currentUser : targetUser;
-        User child = currentUser.getRole() == Role.CHILD ? currentUser : targetUser;
+        // Resolve who is elder and who is viewer (stored in child column)
+        User elder = currentIsElder ? currentUser : targetUser;
+        User child = currentIsElder ? targetUser : currentUser;
 
         if (relationshipRepository.existsByElderIdAndChildId(elder.getId(), child.getId())) {
             throw new DuplicateResourceException(
@@ -63,6 +72,53 @@ public class RelationshipService {
         ElderChildRelationship relationship = ElderChildRelationship.builder()
                 .elder(elder)
                 .child(child)
+                .requestedBy(currentUser)
+                .status(RelationshipStatus.PENDING)
+                .build();
+
+        return RelationshipResponse.from(relationshipRepository.save(relationship));
+    }
+
+    /**
+     * Request a relationship using an elder's care code (their UUID string).
+     * Intended for non-elder roles (CHILD / DOCTOR / PATHOLOGIST) to
+     * connect to an elder without knowing their email.
+     */
+    @Transactional
+    public RelationshipResponse requestRelationshipByCode(UUID currentUserId,
+                                                          RelationshipCodeRequest req) {
+
+        User currentUser = loadActiveUser(currentUserId);
+
+        UUID elderUuid;
+        try {
+            elderUuid = UUID.fromString(req.getElderCode().trim());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException("Invalid care code.");
+        }
+
+        User elder = userRepository.findByIdAndIsActiveTrue(elderUuid)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No active elder found for the given care code."));
+
+        if (elder.getRole() != Role.ELDER) {
+            throw new IllegalStateException("Care code must belong to an ELDER account.");
+        }
+
+        if (currentUser.getRole() == Role.ELDER) {
+            throw new IllegalStateException(
+                    "Elders should share their care code; guardians/doctors/pathologists " +
+                    "use it to request access.");
+        }
+
+        if (relationshipRepository.existsByElderIdAndChildId(elder.getId(), currentUser.getId())) {
+            throw new DuplicateResourceException(
+                    "A monitoring relationship between these two users already exists.");
+        }
+
+        ElderChildRelationship relationship = ElderChildRelationship.builder()
+                .elder(elder)
+                .child(currentUser)
                 .requestedBy(currentUser)
                 .status(RelationshipStatus.PENDING)
                 .build();
@@ -125,6 +181,22 @@ public class RelationshipService {
     public List<RelationshipResponse> getMyElders(UUID childId) {
         return relationshipRepository
                 .findByChildIdAndStatus(childId, RelationshipStatus.ACTIVE)
+                .stream()
+                .map(RelationshipResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns all ACTIVE relationships for a given elder, after validating
+     * that the caller has access to that elder via {@link ElderAccessService}.
+     * This is used to show the full care team (guardians, doctors, pathologists)
+     * to any linked participant.
+     */
+    @Transactional(readOnly = true)
+    public List<RelationshipResponse> getElderNetwork(UUID elderId, User currentUser) {
+        User elder = elderAccessService.validateAccessAndGetElder(elderId, currentUser);
+        return relationshipRepository
+                .findByElderIdAndStatus(elder.getId(), RelationshipStatus.ACTIVE)
                 .stream()
                 .map(RelationshipResponse::from)
                 .collect(Collectors.toList());

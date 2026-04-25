@@ -1,18 +1,20 @@
 package com.minor.elderlyCare.service;
 
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+
 import com.minor.elderlyCare.exception.ResourceNotFoundException;
 import com.minor.elderlyCare.model.RelationshipStatus;
 import com.minor.elderlyCare.model.Role;
 import com.minor.elderlyCare.model.User;
 import com.minor.elderlyCare.repository.ElderChildRelationshipRepository;
 import com.minor.elderlyCare.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Shared service for validating that the current user has permission
@@ -20,7 +22,8 @@ import java.util.stream.Collectors;
  *
  * Access rules:
  *   • The elder themselves  → always allowed.
- *   • A CHILD with an ACTIVE relationship to the elder → allowed.
+ *   • A linked viewer (CHILD / DOCTOR / PATHOLOGIST) with an ACTIVE
+ *     relationship to the elder → allowed.
  *   • Anyone else → denied.
  */
 @Service
@@ -52,8 +55,10 @@ public class ElderAccessService {
             return elder;
         }
 
-        // Child with an ACTIVE relationship
-        if (currentUser.getRole() == Role.CHILD) {
+        // Linked viewer (guardian/doctor/pathologist) with an ACTIVE relationship
+        if (currentUser.getRole() == Role.CHILD
+                || currentUser.getRole() == Role.DOCTOR
+                || currentUser.getRole() == Role.PATHOLOGIST) {
             boolean hasAccess = relationshipRepository
                     .findByElderIdAndChildId(elderId, currentUser.getId())
                     .filter(r -> r.getStatus() == RelationshipStatus.ACTIVE)
@@ -65,7 +70,7 @@ public class ElderAccessService {
         }
 
         throw new AccessDeniedException(
-                "You do not have permission to access this elder's data");
+            "You do not have permission to access this elder's data");
     }
 
     /**

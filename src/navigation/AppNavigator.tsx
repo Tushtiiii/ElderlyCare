@@ -1,18 +1,20 @@
-import React from 'react';
-import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
-import { enableScreens } from 'react-native-screens';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import React from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { enableScreens } from 'react-native-screens';
 
 import { useAuth } from '../context/AuthContext';
+import { COLORS } from '../theme';
 import {
-  AuthStackParamList,
-  MainStackParamList,
-  ElderTabParamList,
-  GuardianTabParamList,
+    AuthStackParamList,
+    DoctorTabParamList,
+    ElderTabParamList,
+    GuardianTabParamList,
+    MainStackParamList,
+    PathologistTabParamList,
 } from '../types';
-import { COLORS, FONT_SIZE } from '../theme';
 
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -21,22 +23,29 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 // Shared screens
 import ProfileScreen from '../screens/main/ProfileScreen';
 import RelationshipsScreen from '../screens/main/RelationshipsScreen';
+import ReportDetailScreen from '../screens/main/ReportDetailScreen';
 import RequestConnectionScreen from '../screens/main/RequestConnectionScreen';
 
 // Elder screens
-import ElderDashboardScreen from '../screens/elder/ElderDashboardScreen';
-import AddVitalScreen from '../screens/elder/AddVitalScreen';
-import VitalHistoryScreen from '../screens/elder/VitalHistoryScreen';
-import MedicationsScreen from '../screens/elder/MedicationsScreen';
-import AddMedicationScreen from '../screens/elder/AddMedicationScreen';
 import AddLabReportScreen from '../screens/elder/AddLabReportScreen';
+import AddMedicationScreen from '../screens/elder/AddMedicationScreen';
+import AddVitalScreen from '../screens/elder/AddVitalScreen';
 import AlertsScreen from '../screens/elder/AlertsScreen';
+import ElderDashboardScreen from '../screens/elder/ElderDashboardScreen';
+import MedicationsScreen from '../screens/elder/MedicationsScreen';
+import VitalHistoryScreen from '../screens/elder/VitalHistoryScreen';
 
 // Guardian screens
-import GuardianDashboardScreen from '../screens/guardian/GuardianDashboardScreen';
 import ElderDetailScreen from '../screens/guardian/ElderDetailScreen';
 import ElderVitalHistoryScreen from '../screens/guardian/ElderVitalHistoryScreen';
 import GuardianAlertsScreen from '../screens/guardian/GuardianAlertsScreen';
+import GuardianDashboardScreen from '../screens/guardian/GuardianDashboardScreen';
+
+// Doctor screens
+import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
+
+// Pathologist screens
+import PathologistDashboardScreen from '../screens/pathologist/PathologistDashboardScreen';
 
 enableScreens();
 
@@ -44,6 +53,8 @@ const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const MainStack = createNativeStackNavigator<MainStackParamList>();
 const ElderTab = createBottomTabNavigator<ElderTabParamList>();
 const GuardianTab = createBottomTabNavigator<GuardianTabParamList>();
+const DoctorTab = createBottomTabNavigator<DoctorTabParamList>();
+const PathologistTab = createBottomTabNavigator<PathologistTabParamList>();
 
 // ── Tab icon helper ───────────────────────────────────────────────────────────
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
@@ -189,32 +200,143 @@ function GuardianTabNavigator() {
   );
 }
 
+// ── Doctor Bottom Tabs ────────────────────────────────────────────────────────
+function DoctorTabNavigator() {
+  return (
+    <DoctorTab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.subtext,
+        tabBarStyle: {
+          backgroundColor: COLORS.card,
+          borderTopColor: COLORS.border,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 4,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
+      }}>
+      <DoctorTab.Screen
+        name="DoctorHome"
+        component={DoctorDashboardScreen}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+        }}
+      />
+      <DoctorTab.Screen
+        name="Patients"
+        component={RelationshipsScreen}
+        options={{
+          tabBarLabel: 'Patients',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="👥" focused={focused} />,
+        }}
+      />
+      <DoctorTab.Screen
+        name="DoctorProfile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
+        }}
+      />
+    </DoctorTab.Navigator>
+  );
+}
+
+// ── Pathologist Bottom Tabs ───────────────────────────────────────────────────
+function PathologistTabNavigator() {
+  return (
+    <PathologistTab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.subtext,
+        tabBarStyle: {
+          backgroundColor: COLORS.card,
+          borderTopColor: COLORS.border,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 4,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
+      }}>
+      <PathologistTab.Screen
+        name="PathologistHome"
+        component={PathologistDashboardScreen}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+        }}
+      />
+      <PathologistTab.Screen
+        name="UploadReport"
+        component={AddLabReportScreen}
+        options={{
+          tabBarLabel: 'Upload',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📤" focused={focused} />,
+        }}
+      />
+      <PathologistTab.Screen
+        name="PathologistProfile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
+        }}
+      />
+    </PathologistTab.Navigator>
+  );
+}
+
 // ── Main Stack Navigator ──────────────────────────────────────────────────────
 function MainNavigator() {
   const { user } = useAuth();
-  const isElder = user?.role === 'ELDER';
+  const themeColor = user?.role === 'ELDER' ? '#7B1FA2' : COLORS.primary;
 
   return (
     <MainStack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: isElder ? '#7B1FA2' : COLORS.primary },
+        headerStyle: { backgroundColor: themeColor },
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: '700', fontSize: 18 },
         contentStyle: { backgroundColor: COLORS.background },
         animation: 'slide_from_right',
       }}>
-      {/* Tab root (no header — tabs handle their own layout) */}
-      {isElder ? (
+      {/* Tab root based on role */}
+      {user?.role === 'ELDER' && (
         <MainStack.Screen
           name="ElderTabs"
           component={ElderTabNavigator}
           options={{ title: 'Elderly Care', headerBackVisible: false }}
         />
-      ) : (
+      )}
+      {user?.role === 'CHILD' && (
         <MainStack.Screen
           name="GuardianTabs"
           component={GuardianTabNavigator}
           options={{ title: 'Guardian Panel', headerBackVisible: false }}
+        />
+      )}
+      {user?.role === 'DOCTOR' && (
+        <MainStack.Screen
+          name="DoctorTabs"
+          component={DoctorTabNavigator}
+          options={{ title: 'Doctor Dashboard', headerBackVisible: false }}
+        />
+      )}
+      {user?.role === 'PATHOLOGIST' && (
+        <MainStack.Screen
+          name="PathologistTabs"
+          component={PathologistTabNavigator}
+          options={{ title: 'Pathologist Panel', headerBackVisible: false }}
         />
       )}
 
@@ -232,7 +354,12 @@ function MainNavigator() {
       <MainStack.Screen
         name="RequestConnection"
         component={RequestConnectionScreen}
-        options={{ title: isElder ? 'Add Guardian' : 'Add Elder' }}
+        options={{ title: user?.role === 'ELDER' ? 'Add Guardian' : 'Add Connection' }}
+      />
+      <MainStack.Screen
+        name="ReportDetail"
+        component={ReportDetailScreen}
+        options={{ title: 'Report Details' }}
       />
 
       {/* Elder-only stack screens */}

@@ -10,5 +10,7 @@ package com.minor.elderlyCare.model;
  */
 public enum Role {
     ELDER,
-    CHILD
+    CHILD,
+    DOCTOR,
+    PATHOLOGIST
 }

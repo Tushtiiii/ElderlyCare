@@ -1,26 +1,27 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Platform,
+    ActivityIndicator,
+    Alert,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
+import { requestRelationship, requestRelationshipByCode } from '../../api/relationships';
 import { useAuth } from '../../context/AuthContext';
-import { requestRelationship } from '../../api/relationships';
+import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
 import { RelationshipResponse } from '../../types';
-import { COLORS, FONT_SIZE, RADIUS, SPACING, SHADOW } from '../../theme';
 
 export default function RequestConnectionScreen() {
   const { user } = useAuth();
   const isElder = user?.role === 'ELDER';
 
   const [targetEmail, setTargetEmail] = useState('');
+  const [careCode, setCareCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RelationshipResponse | null>(null);
 
@@ -52,9 +53,32 @@ export default function RequestConnectionScreen() {
     }
   };
 
+  const handleSendRequestByCode = async () => {
+    if (!careCode.trim()) {
+      Alert.alert('Missing Care Code', 'Please enter the elder care code.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await requestRelationshipByCode(careCode.trim());
+      setResult(res);
+      setCareCode('');
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail ??
+        err?.response?.data?.message ??
+        'Failed to send request. Make sure the code is correct and belongs to an elder.';
+      Alert.alert('Request Failed', msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleNewRequest = () => {
     setResult(null);
     setTargetEmail('');
+    setCareCode('');
   };
 
   const targetRoleLabel = isElder ? 'Guardian (CHILD account)' : 'Elder (ELDER account)';
@@ -114,10 +138,41 @@ export default function RequestConnectionScreen() {
             )}
           </TouchableOpacity>
 
+          {!isElder && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.label}>Or use elder care code</Text>
+              <TextInput
+                style={styles.input}
+                value={careCode}
+                onChangeText={setCareCode}
+                placeholder="Paste elder care code (UUID)"
+                placeholderTextColor={COLORS.disabled}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="send"
+                onSubmitEditing={handleSendRequestByCode}
+              />
+              <TouchableOpacity
+                style={[styles.btnSecondary, loading && styles.btnDisabled]}
+                onPress={handleSendRequestByCode}
+                disabled={loading}
+                activeOpacity={0.8}>
+                {loading ? (
+                  <ActivityIndicator color={COLORS.primary} />
+                ) : (
+                  <Text style={styles.btnSecondaryText}>Connect via Care Code</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
+
           <View style={styles.noteBox}>
             <Text style={styles.noteText}>
               ℹ️ The connection is PENDING until the other person accepts it.
-              Both parties must have opposite roles (ELDER ↔ CHILD).
+              The elder shares their care code from their dashboard; guardians,
+              doctors, and pathologists can use that code here to request
+              access.
             </Text>
           </View>
         </View>

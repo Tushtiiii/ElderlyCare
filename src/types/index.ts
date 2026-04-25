@@ -1,5 +1,5 @@
 // ── Domain enums ──────────────────────────────────────────────────────────────
-export type Role = 'ELDER' | 'CHILD';
+export type Role = 'ELDER' | 'CHILD' | 'DOCTOR' | 'PATHOLOGIST';
 export type RelationshipStatus = 'PENDING' | 'ACTIVE' | 'REVOKED';
 export type VitalType =
   | 'BLOOD_SUGAR'
@@ -183,6 +183,18 @@ export type GuardianTabParamList = {
   GuardianProfile: undefined;
 };
 
+export type DoctorTabParamList = {
+  DoctorHome: undefined;
+  Patients: undefined;
+  DoctorProfile: undefined;
+};
+
+export type PathologistTabParamList = {
+  PathologistHome: undefined;
+  UploadReport: undefined;
+  PathologistProfile: undefined;
+};
+
 export type MainStackParamList = {
   Dashboard: undefined;
   Profile: undefined;
@@ -198,4 +210,11 @@ export type MainStackParamList = {
   GuardianTabs: undefined;
   ElderDetail: { elderId: string; elderName: string };
   ElderVitalHistory: { elderId: string; elderName: string; vitalType?: VitalType };
+  // Doctor screens
+  DoctorTabs: undefined;
+  // Pathologist screens
+  PathologistTabs: undefined;
+  // Common
+  ReportDetail: { reportId: string };
+};
 };

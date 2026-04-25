@@ -1,18 +1,27 @@
 package com.minor.elderlyCare.controller;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.minor.elderlyCare.dto.request.RelationshipCodeRequest;
 import com.minor.elderlyCare.dto.request.RelationshipRequest;
 import com.minor.elderlyCare.dto.response.RelationshipResponse;
 import com.minor.elderlyCare.security.CustomUserPrincipal;
 import com.minor.elderlyCare.service.RelationshipService;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/relationships")
@@ -35,6 +44,22 @@ public class RelationshipController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(relationshipService.requestRelationship(
+                        principal.getUser().getId(), req));
+    }
+
+    /**
+     * POST /api/relationships/request-by-code
+     *
+     * Initiate a monitoring relationship using an elder's care code (UUID).
+     * Intended for guardians, doctors, and pathologists.
+     */
+    @PostMapping("/request-by-code")
+    public ResponseEntity<RelationshipResponse> requestByCode(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Valid @RequestBody RelationshipCodeRequest req) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(relationshipService.requestRelationshipByCode(
                         principal.getUser().getId(), req));
     }
 
@@ -121,4 +146,19 @@ public class RelationshipController {
                 relationshipService.getSentPendingRequests(
                         principal.getUser().getId()));
     }
+
+        /**
+         * GET /api/relationships/elder/{elderId}/network
+         *
+         * Returns all ACTIVE relationships for the given elder, so that any
+         * participant (elder, guardian, doctor, pathologist) linked to that elder
+         * can see the full care team.
+         */
+        @GetMapping("/elder/{elderId}/network")
+        public ResponseEntity<List<RelationshipResponse>> getElderNetwork(
+                        @PathVariable UUID elderId,
+                        @AuthenticationPrincipal CustomUserPrincipal principal) {
+                return ResponseEntity.ok(
+                                relationshipService.getElderNetwork(elderId, principal.getUser()));
+        }
 }

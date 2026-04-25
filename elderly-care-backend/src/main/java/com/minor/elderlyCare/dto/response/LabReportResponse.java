@@ -1,11 +1,16 @@
 package com.minor.elderlyCare.dto.response;
 
-import com.minor.elderlyCare.model.LabReport;
-import lombok.*;
-
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+
+import com.minor.elderlyCare.model.LabReport;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * Response DTO for a lab report.
@@ -29,16 +34,6 @@ import java.util.UUID;
 @Builder
 public class LabReportResponse {
 
-    private UUID id;
-    private UUID elderId;
-    private String elderName;
-    private String testName;
-    private String result;
-    private LocalDate testDate;
-    private String fileUrl;
-    private String notes;
-    private OffsetDateTime createdAt;
-
     public static LabReportResponse from(LabReport lr) {
         return LabReportResponse.builder()
                 .id(lr.getId())
@@ -48,8 +43,22 @@ public class LabReportResponse {
                 .result(lr.getResult())
                 .testDate(lr.getTestDate())
                 .fileUrl(lr.getFileUrl())
+                .uploadedBy(lr.getUploadedBy())
+                .dynamicData(lr.getDynamicData())
                 .notes(lr.getNotes())
                 .createdAt(lr.getCreatedAt())
                 .build();
     }
+    private UUID id;
+    private UUID elderId;
+    private String elderName;
+    private String testName;
+    private String result;
+    private LocalDate testDate;
+    private String fileUrl;
+    private String uploadedBy;
+    private java.util.Map<String, Object> dynamicData;
+    private String notes;
+
+    private OffsetDateTime createdAt;
 }

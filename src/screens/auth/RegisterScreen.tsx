@@ -1,23 +1,23 @@
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Alert,
+  View,
 } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 import { useAuth } from '../../context/AuthContext';
+import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
 import { AuthStackParamList, Role } from '../../types';
-import { COLORS, FONT_SIZE, RADIUS, SPACING, SHADOW } from '../../theme';
 
 type Nav = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -165,6 +165,56 @@ export default function RegisterScreen() {
                   role === 'CHILD' && styles.roleDescActive,
                 ]}>
                 Monitoring an elder
+              </Text>
+            </TouchableOpacity>
+
+            {/* Doctor */}
+            <TouchableOpacity
+              style={[
+                styles.roleBtn,
+                role === 'DOCTOR' && styles.roleBtnActive,
+              ]}
+              onPress={() => setRole('DOCTOR')}
+              activeOpacity={0.8}>
+              <Text style={styles.roleIcon}>👨‍⚕️</Text>
+              <Text
+                style={[
+                  styles.roleLabel,
+                  role === 'DOCTOR' && styles.roleLabelActive,
+                ]}>
+                Doctor
+              </Text>
+              <Text
+                style={[
+                  styles.roleDesc,
+                  role === 'DOCTOR' && styles.roleDescActive,
+                ]}>
+                Reviewing reports
+              </Text>
+            </TouchableOpacity>
+
+            {/* Pathologist */}
+            <TouchableOpacity
+              style={[
+                styles.roleBtn,
+                role === 'PATHOLOGIST' && styles.roleBtnActive,
+              ]}
+              onPress={() => setRole('PATHOLOGIST')}
+              activeOpacity={0.8}>
+              <Text style={styles.roleIcon}>🔬</Text>
+              <Text
+                style={[
+                  styles.roleLabel,
+                  role === 'PATHOLOGIST' && styles.roleLabelActive,
+                ]}>
+                Pathologist
+              </Text>
+              <Text
+                style={[
+                  styles.roleDesc,
+                  role === 'PATHOLOGIST' && styles.roleDescActive,
+                ]}>
+                Uploading tests
               </Text>
             </TouchableOpacity>
           </View>
@@ -317,11 +367,12 @@ const styles = StyleSheet.create({
   // Role selector
   roleRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: SPACING.md,
     marginBottom: SPACING.sm,
   },
   roleBtn: {
-    flex: 1,
+    width: '47%',
     borderWidth: 2,
     borderColor: COLORS.border,
     borderRadius: RADIUS.md,

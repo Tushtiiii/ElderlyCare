@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {
   createContext,
   useCallback,
@@ -6,7 +7,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthAPI from '../api/auth';
 import * as UsersAPI from '../api/users';
 import { AuthResponse, LoginRequest, RegisterRequest, UserResponse } from '../types';
@@ -82,9 +82,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await AsyncStorage.removeItem('auth_token');
-    setToken(null);
-    setUser(null);
+    try {
+      await AsyncStorage.removeItem('auth_token');
+    } catch {
+      // Ignore storage errors; still clear in-memory session so user is logged out.
+    } finally {
+      setToken(null);
+      setUser(null);
+    }
   }, []);
 
   const refreshUser = useCallback(async () => {

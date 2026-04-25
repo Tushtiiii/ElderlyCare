@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS users (
     email               VARCHAR(255)    NOT NULL,
     password_hash       VARCHAR(255)    NOT NULL,
     phone               VARCHAR(20),                          -- optional but recommended
-    role                VARCHAR(10)     NOT NULL,
+    role                VARCHAR(20)     NOT NULL,
     date_of_birth       DATE,
     profile_picture_url VARCHAR(500),
     push_token          VARCHAR(500),                         -- FCM / APNs device token
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS users (
 
     -- ── Check Constraints ───────────────────────────────────────────────────
     CONSTRAINT chk_users_role
-        CHECK (role IN ('ELDER', 'CHILD')),
+        CHECK (role IN ('ELDER', 'CHILD', 'DOCTOR', 'PATHOLOGIST')),
 
     CONSTRAINT chk_users_email_format
         CHECK (email ~* '^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$'),
@@ -225,10 +225,12 @@ CREATE TABLE IF NOT EXISTS lab_reports (
     id              UUID            NOT NULL DEFAULT gen_random_uuid(),
     elder_id        UUID            NOT NULL,
     test_name       VARCHAR(200)    NOT NULL,
-    result          VARCHAR(500)    NOT NULL,
+    result          VARCHAR(500),                           -- legacy result
+    dynamic_data    JSONB,                                  -- structured medical data
     test_date       DATE            NOT NULL,
     file_url        VARCHAR(1000),                           -- URL to uploaded PDF/image
     notes           VARCHAR(500),
+    uploaded_by     VARCHAR(100),                            -- pathologist name/id
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
 

@@ -1,18 +1,20 @@
 package com.minor.elderlyCare.service;
 
+import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.minor.elderlyCare.dto.request.LabReportRequest;
 import com.minor.elderlyCare.dto.response.LabReportResponse;
 import com.minor.elderlyCare.exception.ResourceNotFoundException;
 import com.minor.elderlyCare.model.LabReport;
 import com.minor.elderlyCare.model.User;
 import com.minor.elderlyCare.repository.LabReportRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +34,8 @@ public class LabReportService {
                 .result(request.getResult())
                 .testDate(request.getTestDate())
                 .fileUrl(request.getFileUrl())
+                .dynamicData(request.getDynamicData())
+                .uploadedBy(currentUser.getName())
                 .notes(request.getNotes())
                 .build();
 

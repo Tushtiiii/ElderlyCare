@@ -1,10 +1,16 @@
 package com.minor.elderlyCare.dto.request;
 
-import jakarta.validation.constraints.*;
-import lombok.*;
-
 import java.time.LocalDate;
 import java.util.UUID;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * Request body for creating a lab report.
@@ -41,6 +47,9 @@ public class LabReportRequest {
 
     /** URL of the uploaded PDF. Can be null if no file was uploaded. */
     private String fileUrl;
+
+    /** Extra structured data for the report (e.g. hemoglobin: 13.2) */
+    private java.util.Map<String, Object> dynamicData;
 
     private String notes;
 }

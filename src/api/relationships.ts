@@ -1,9 +1,15 @@
-import apiClient from './client';
 import { RelationshipRequest, RelationshipResponse } from '../types';
+import apiClient from './client';
 
 /** POST /api/relationships/request */
 export const requestRelationship = (data: RelationshipRequest): Promise<RelationshipResponse> =>
   apiClient.post<RelationshipResponse>('/api/relationships/request', data).then(r => r.data);
+
+/** POST /api/relationships/request-by-code */
+export const requestRelationshipByCode = (elderCode: string): Promise<RelationshipResponse> =>
+  apiClient
+    .post<RelationshipResponse>('/api/relationships/request-by-code', { elderCode })
+    .then(r => r.data);
 
 /** PATCH /api/relationships/:id/accept — accept a PENDING request (non-requester only) */
 export const acceptRelationship = (id: string): Promise<RelationshipResponse> =>
@@ -28,3 +34,9 @@ export const getIncomingPendingRequests = (): Promise<RelationshipResponse[]> =>
 /** GET /api/relationships/pending/sent — PENDING requests sent by current user */
 export const getSentPendingRequests = (): Promise<RelationshipResponse[]> =>
   apiClient.get<RelationshipResponse[]>('/api/relationships/pending/sent').then(r => r.data);
+
+/** GET /api/relationships/elder/:elderId/network — full care team for an elder */
+export const getElderNetwork = (elderId: string): Promise<RelationshipResponse[]> =>
+  apiClient
+    .get<RelationshipResponse[]>(`/api/relationships/elder/${elderId}/network`)
+    .then(r => r.data);
