@@ -1,5 +1,5 @@
-import apiClient from './client';
 import { MedicationRequest, MedicationResponse, Page } from '../types';
+import apiClient from './client';
 
 /** POST /api/medications — create new medication */
 export const createMedication = (
@@ -39,7 +39,7 @@ export const getMedications = (
     .then(r => r.data);
 
 /** GET /api/medications/elder/:elderId/active — active medications only */
-export const getActiveMedications = (
+export const getActiveMedicationsForElder = (
   elderId: string,
 ): Promise<MedicationResponse[]> =>
   apiClient

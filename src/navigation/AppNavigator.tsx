@@ -2,18 +2,18 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { enableScreens } from 'react-native-screens';
 
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../theme';
 import {
-    AuthStackParamList,
-    DoctorTabParamList,
-    ElderTabParamList,
-    GuardianTabParamList,
-    MainStackParamList,
-    PathologistTabParamList,
+  AuthStackParamList,
+  DoctorTabParamList,
+  ElderTabParamList,
+  GuardianTabParamList,
+  MainStackParamList,
+  PathologistTabParamList,
 } from '../types';
 
 // Auth screens
@@ -224,16 +224,24 @@ function DoctorTabNavigator() {
         name="DoctorHome"
         component={DoctorDashboardScreen}
         options={{
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+          tabBarLabel: 'Dashboard',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏥" focused={focused} />,
         }}
       />
       <DoctorTab.Screen
         name="Patients"
         component={RelationshipsScreen}
         options={{
-          tabBarLabel: 'Patients',
+          tabBarLabel: 'Connections',
           tabBarIcon: ({ focused }) => <TabIcon emoji="👥" focused={focused} />,
+        }}
+      />
+      <DoctorTab.Screen
+        name="DoctorUploadReport"
+        component={AddLabReportScreen}
+        options={{
+          tabBarLabel: 'Reports',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🧪" focused={focused} />,
         }}
       />
       <DoctorTab.Screen
@@ -272,8 +280,8 @@ function PathologistTabNavigator() {
         name="PathologistHome"
         component={PathologistDashboardScreen}
         options={{
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+          tabBarLabel: 'Dashboard',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🔬" focused={focused} />,
         }}
       />
       <PathologistTab.Screen
@@ -303,13 +311,18 @@ function MainNavigator() {
 
   return (
     <MainStack.Navigator
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         headerStyle: { backgroundColor: themeColor },
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: '700', fontSize: 18 },
         contentStyle: { backgroundColor: COLORS.background },
         animation: 'slide_from_right',
-      }}>
+        headerRight: () => (
+          <TouchableOpacity onPress={() => navigation.navigate('VoiceInput' as any)} style={{ marginRight: 12 }}>
+            <Text style={{ color: '#fff', fontSize: 18 }}>🎤</Text>
+          </TouchableOpacity>
+        ),
+      })}>
       {/* Tab root based on role */}
       {user?.role === 'ELDER' && (
         <MainStack.Screen
@@ -339,6 +352,13 @@ function MainNavigator() {
           options={{ title: 'Pathologist Panel', headerBackVisible: false }}
         />
       )}
+      {!user?.role && (
+        <MainStack.Screen
+          name="Dashboard"
+          component={View} // Temporary placeholder if role is missing
+          options={{ title: 'Loading...' }}
+        />
+      )}
 
       {/* Shared stack screens */}
       <MainStack.Screen
@@ -360,6 +380,12 @@ function MainNavigator() {
         name="ReportDetail"
         component={ReportDetailScreen}
         options={{ title: 'Report Details' }}
+      />
+
+      <MainStack.Screen
+        name="VoiceInput"
+        component={require('../screens/main/VoiceInputScreen').default}
+        options={{ title: 'Voice Input' }}
       />
 
       {/* Elder-only stack screens */}

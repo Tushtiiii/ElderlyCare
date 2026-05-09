@@ -1,34 +1,34 @@
+import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
-import { useAuth } from '../../context/AuthContext';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
-  acceptRelationship,
-  getMyChildren,
-  getMyElders,
-  getIncomingPendingRequests,
-  getSentPendingRequests,
-  revokeRelationship,
+    getMyChildren,
+    getMyElders,
+    revokeRelationship,
 } from '../../api/relationships';
-import { RelationshipResponse } from '../../types';
-import { COLORS, FONT_SIZE, RADIUS, SPACING, SHADOW } from '../../theme';
+import { useAuth } from '../../context/AuthContext';
+import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
+import { MainStackParamList, RelationshipResponse } from '../../types';
+
+type Nav = NativeStackNavigationProp<MainStackParamList>;
 
 export default function RelationshipsScreen() {
+  const navigation = useNavigation<Nav>();
   const { user } = useAuth();
   const isElder = user?.role === 'ELDER';
 
   const [connections, setConnections] = useState<RelationshipResponse[]>([]);
-  const [incomingRequests, setIncomingRequests] = useState<RelationshipResponse[]>([]);
-  const [sentRequests, setSentRequests] = useState<RelationshipResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -36,14 +36,8 @@ export default function RelationshipsScreen() {
   // ── Data fetching ──────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     try {
-      const [activeData, incoming, sent] = await Promise.all([
-        isElder ? getMyChildren() : getMyElders(),
-        getIncomingPendingRequests(),
-        getSentPendingRequests(),
-      ]);
+      const activeData = await (isElder ? getMyChildren() : getMyElders());
       setConnections(activeData);
-      setIncomingRequests(incoming);
-      setSentRequests(sent);
     } catch (err: any) {
       const msg =
         err?.response?.data?.detail ?? 'Failed to load connections.';
@@ -64,64 +58,6 @@ export default function RelationshipsScreen() {
     await fetchAll();
     setRefreshing(false);
   }, [fetchAll]);
-
-  // ── Accept incoming request ────────────────────────────────────────────────
-  const handleAccept = (rel: RelationshipResponse) => {
-    const sender = rel.requestedById === rel.elder.id ? rel.elder : rel.child;
-    Alert.alert(
-      'Accept Request',
-      `Accept monitoring request from ${sender.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Accept',
-          onPress: async () => {
-            setActionLoading(rel.id);
-            try {
-              await acceptRelationship(rel.id);
-              await fetchAll();
-              Alert.alert('Connected!', `You are now connected with ${sender.name}.`);
-            } catch (err: any) {
-              const msg =
-                err?.response?.data?.detail ?? 'Could not accept request.';
-              Alert.alert('Error', msg);
-            } finally {
-              setActionLoading(null);
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  // ── Reject / Revoke ────────────────────────────────────────────────────────
-  const handleReject = (rel: RelationshipResponse) => {
-    const sender = rel.requestedById === rel.elder.id ? rel.elder : rel.child;
-    Alert.alert(
-      'Decline Request',
-      `Decline monitoring request from ${sender.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline',
-          style: 'destructive',
-          onPress: async () => {
-            setActionLoading(rel.id);
-            try {
-              await revokeRelationship(rel.id);
-              await fetchAll();
-            } catch (err: any) {
-              const msg =
-                err?.response?.data?.detail ?? 'Could not decline request.';
-              Alert.alert('Error', msg);
-            } finally {
-              setActionLoading(null);
-            }
-          },
-        },
-      ],
-    );
-  };
 
   const handleRevoke = (rel: RelationshipResponse) => {
     const other = isElder ? rel.child : rel.elder;
@@ -151,33 +87,6 @@ export default function RelationshipsScreen() {
     );
   };
 
-  const handleCancelSent = (rel: RelationshipResponse) => {
-    const other = isElder ? rel.child : rel.elder;
-    Alert.alert(
-      'Cancel Request',
-      `Cancel your pending request to ${other.name}?`,
-      [
-        { text: 'Keep', style: 'cancel' },
-        {
-          text: 'Cancel Request',
-          style: 'destructive',
-          onPress: async () => {
-            setActionLoading(rel.id);
-            try {
-              await revokeRelationship(rel.id);
-              await fetchAll();
-            } catch (err: any) {
-              const msg =
-                err?.response?.data?.detail ?? 'Could not cancel request.';
-              Alert.alert('Error', msg);
-            } finally {
-              setActionLoading(null);
-            }
-          },
-        },
-      ],
-    );
-  };
 
   const connectionLabel = isElder ? 'Active Guardians' : 'Elders You Monitor';
 
@@ -202,149 +111,27 @@ export default function RelationshipsScreen() {
         />
       }>
 
-      {/* ── Incoming Requests (Notifications) ───────────────────────────── */}
-      {incomingRequests.length > 0 && (
-        <>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>📩 Incoming Requests</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{incomingRequests.length}</Text>
-            </View>
-          </View>
-          <Text style={styles.sectionHint}>
-            These people want to connect with you. Accept or decline.
-          </Text>
-
-          {incomingRequests.map(rel => {
-            const sender = rel.requestedById === rel.elder.id ? rel.elder : rel.child;
-            const isProcessing = actionLoading === rel.id;
-            return (
-              <View key={rel.id} style={[styles.requestCard, SHADOW.small]}>
-                <View style={styles.cardTop}>
-                  <View style={[styles.avatar, { backgroundColor: '#FF6F00' }]}>
-                    <Text style={styles.avatarText}>
-                      {sender.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.userInfo}>
-                    <Text style={styles.userName}>{sender.name}</Text>
-                    <Text style={styles.userEmail}>{sender.email}</Text>
-                    <Text style={styles.requestMeta}>
-                      wants to {isElder ? 'monitor your health' : 'be monitored by you'}
-                    </Text>
-                    <Text style={styles.connDate}>
-                      Sent{' '}
-                      {new Date(rel.createdAt).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.requestActions}>
-                  <TouchableOpacity
-                    style={[styles.declineBtn, isProcessing && styles.btnDisabled]}
-                    onPress={() => handleReject(rel)}
-                    disabled={isProcessing}
-                    activeOpacity={0.8}>
-                    {isProcessing ? (
-                      <ActivityIndicator color={COLORS.danger} size="small" />
-                    ) : (
-                      <Text style={styles.declineBtnText}>Decline</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.acceptBtn, isProcessing && styles.btnDisabled]}
-                    onPress={() => handleAccept(rel)}
-                    disabled={isProcessing}
-                    activeOpacity={0.8}>
-                    {isProcessing ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <Text style={styles.acceptBtnText}>Accept</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-        </>
-      )}
-
-      {/* ── Sent Requests (Awaiting) ────────────────────────────────────── */}
-      {sentRequests.length > 0 && (
-        <>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>📤 Sent Requests</Text>
-            <View style={[styles.badge, { backgroundColor: '#FFF3E0' }]}>
-              <Text style={[styles.badgeText, { color: '#E65100' }]}>
-                {sentRequests.length}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.sectionHint}>
-            Waiting for the other person to accept your request.
-          </Text>
-
-          {sentRequests.map(rel => {
-            const other = isElder ? rel.child : rel.elder;
-            const isProcessing = actionLoading === rel.id;
-            return (
-              <View key={rel.id} style={[styles.sentCard, SHADOW.small]}>
-                <View style={styles.cardTop}>
-                  <View style={[styles.avatar, { backgroundColor: '#FFA726' }]}>
-                    <Text style={styles.avatarText}>
-                      {other.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.userInfo}>
-                    <Text style={styles.userName}>{other.name}</Text>
-                    <Text style={styles.userEmail}>{other.email}</Text>
-                    <Text style={styles.connDate}>
-                      Requested{' '}
-                      {new Date(rel.createdAt).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.cardActions}>
-                  <View style={styles.pendingBadge}>
-                    <Text style={styles.pendingText}>⏳ Pending</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.cancelBtn, isProcessing && styles.btnDisabled]}
-                    onPress={() => handleCancelSent(rel)}
-                    disabled={isProcessing}
-                    activeOpacity={0.8}>
-                    {isProcessing ? (
-                      <ActivityIndicator color={COLORS.danger} size="small" />
-                    ) : (
-                      <Text style={styles.cancelBtnText}>Cancel</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-        </>
-      )}
-
       {/* ── Active Connections ──────────────────────────────────────────── */}
       <Text style={styles.sectionTitle}>{connectionLabel}</Text>
       <Text style={styles.sectionHint}>
         Pull down to refresh. Tap Revoke to remove a connection.
       </Text>
 
+      {!isElder && (
+        <TouchableOpacity
+          style={styles.linkCta}
+          onPress={() => navigation.navigate('RequestConnection')}
+          activeOpacity={0.8}>
+          <Text style={styles.linkCtaText}>+ Link Another Elder</Text>
+        </TouchableOpacity>
+      )}
+
       {connections.length === 0 ? (
         <View style={[styles.emptyCard, SHADOW.small]}>
           <Text style={styles.emptyIcon}>🔗</Text>
           <Text style={styles.emptyText}>No active connections</Text>
           <Text style={styles.emptyHint}>
-            Send a connection request from the Dashboard.
+            Link someone from the dashboard using care code or email.
           </Text>
         </View>
       ) : (
@@ -428,6 +215,20 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xs,
     color: COLORS.subtext,
     marginBottom: SPACING.md,
+  },
+  linkCta: {
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    backgroundColor: COLORS.primary + '10',
+  },
+  linkCtaText: {
+    color: COLORS.primary,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '700',
   },
 
   badge: {

@@ -82,6 +82,7 @@ export interface LabReportResponse {
   testDate: string;
   fileUrl?: string;
   notes?: string;
+  prescription?: string;
   createdAt: string;
 }
 
@@ -100,46 +101,9 @@ export interface HealthAlertResponse {
   createdAt: string;
 }
 
-// ── Request DTOs ──────────────────────────────────────────────────────────────
-export interface LoginRequest {
-  email: string;
-  password: string;
-  pushToken?: string;
-}
-
-export interface RegisterRequest {
-  name: string;
-  email: string;
-  password: string;
-  phone?: string;
-  role: Role;
-  dateOfBirth?: string;
-}
-
 export interface RelationshipRequest {
-  targetEmail: string;
-}
-
-export interface VitalRecordRequest {
-  elderId: string;
-  vitalType: VitalType;
-  value: number;
-  secondaryValue?: number;
-  unit?: string;
-  notes?: string;
-  recordedAt?: string;
-}
-
-export interface MedicationRequest {
-  elderId: string;
-  medicineName: string;
-  dosage: string;
-  frequency: string;
-  reminderTime?: string;
-  isActive?: boolean;
-  startDate: string;
-  endDate?: string;
-  notes?: string;
+  targetEmail?: string;
+  elderCode?: string;
 }
 
 export interface LabReportRequest {
@@ -148,7 +112,15 @@ export interface LabReportRequest {
   result: string;
   testDate: string;
   fileUrl?: string;
+  dynamicData?: Record<string, unknown>;
   notes?: string;
+  prescription?: string;
+}
+
+export interface CommandResponseDTO {
+  message: string;
+  success: boolean;
+  data?: unknown;
 }
 
 // ── Paginated response wrapper ────────────────────────────────────────────────
@@ -186,6 +158,7 @@ export type GuardianTabParamList = {
 export type DoctorTabParamList = {
   DoctorHome: undefined;
   Patients: undefined;
+  DoctorUploadReport: undefined;
   DoctorProfile: undefined;
 };
 
@@ -205,7 +178,7 @@ export type MainStackParamList = {
   AddVital: undefined;
   VitalHistory: { vitalType?: VitalType };
   AddMedication: { medication?: MedicationResponse };
-  AddLabReport: undefined;
+  AddLabReport: { elderId: string };
   // Guardian screens
   GuardianTabs: undefined;
   ElderDetail: { elderId: string; elderName: string };
@@ -216,5 +189,4 @@ export type MainStackParamList = {
   PathologistTabs: undefined;
   // Common
   ReportDetail: { reportId: string };
-};
 };

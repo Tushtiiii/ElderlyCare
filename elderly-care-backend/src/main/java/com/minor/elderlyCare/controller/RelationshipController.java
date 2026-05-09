@@ -33,8 +33,8 @@ public class RelationshipController {
     /**
      * POST /api/relationships/request
      *
-     * Send a monitoring connection request to another user by their email.
-     * Either an ELDER or a CHILD can initiate.
+        * Create a monitoring connection to another user by email.
+        * Either an ELDER or a non-elder viewer can initiate.
      * The server resolves which side is elder/child from the two users' roles.
      */
     @PostMapping("/request")
@@ -50,7 +50,7 @@ public class RelationshipController {
     /**
      * POST /api/relationships/request-by-code
      *
-     * Initiate a monitoring relationship using an elder's care code (UUID).
+        * Create a monitoring relationship using an elder's care code (UUID).
      * Intended for guardians, doctors, and pathologists.
      */
     @PostMapping("/request-by-code")
@@ -66,9 +66,8 @@ public class RelationshipController {
     /**
      * PATCH /api/relationships/{id}/accept
      *
-     * Accept a PENDING request.
-     * Only the non-initiating participant can accept.
-     * Sets status → ACTIVE.
+        * Compatibility endpoint retained from the old approval workflow.
+        * Ensures relationship status is ACTIVE for participants.
      */
     @PatchMapping("/{id}/accept")
     public ResponseEntity<RelationshipResponse> accept(
@@ -122,8 +121,8 @@ public class RelationshipController {
     /**
      * GET /api/relationships/pending/incoming
      *
-     * Returns all PENDING requests where the current user is the recipient
-     * (not the requester). These are shown as "accept" notifications.
+        * Approval workflow has been removed.
+        * Returns an empty list for backwards compatibility.
      */
     @GetMapping("/pending/incoming")
     public ResponseEntity<List<RelationshipResponse>> getIncomingPendingRequests(
@@ -136,8 +135,8 @@ public class RelationshipController {
     /**
      * GET /api/relationships/pending/sent
      *
-     * Returns all PENDING requests where the current user IS the requester.
-     * These are shown as "awaiting acceptance" status notifications.
+        * Approval workflow has been removed.
+        * Returns an empty list for backwards compatibility.
      */
     @GetMapping("/pending/sent")
     public ResponseEntity<List<RelationshipResponse>> getSentPendingRequests(

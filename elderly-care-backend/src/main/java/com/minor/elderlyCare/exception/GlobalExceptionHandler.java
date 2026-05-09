@@ -1,5 +1,9 @@
 package com.minor.elderlyCare.exception;
 
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -9,10 +13,6 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Central error handler — returns RFC 7807 ProblemDetail JSON bodies
@@ -86,6 +86,33 @@ public class GlobalExceptionHandler {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST,
                 "Invalid request format. Dates must be YYYY-MM-DD and times HH:mm.");
+        pd.setProperty("timestamp", Instant.now());
+        return pd;
+    }
+
+    @ExceptionHandler(OllamaUnavailableException.class)
+    public ProblemDetail handleOllamaUnavailable(OllamaUnavailableException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Intent extraction service is currently unavailable");
+        pd.setProperty("timestamp", Instant.now());
+        return pd;
+    }
+
+    @ExceptionHandler(OllamaTimeoutException.class)
+    public ProblemDetail handleOllamaTimeout(OllamaTimeoutException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
+                HttpStatus.GATEWAY_TIMEOUT,
+                "Intent extraction service timed out");
+        pd.setProperty("timestamp", Instant.now());
+        return pd;
+    }
+
+    @ExceptionHandler(VoiceIntentParsingException.class)
+    public ProblemDetail handleVoiceIntentParsing(VoiceIntentParsingException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_GATEWAY,
+                "Intent extraction returned an invalid response");
         pd.setProperty("timestamp", Instant.now());
         return pd;
     }

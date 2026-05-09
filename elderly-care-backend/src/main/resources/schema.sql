@@ -230,6 +230,7 @@ CREATE TABLE IF NOT EXISTS lab_reports (
     test_date       DATE            NOT NULL,
     file_url        VARCHAR(1000),                           -- URL to uploaded PDF/image
     notes           VARCHAR(500),
+    prescription    VARCHAR(2000),                           -- doctor/pathologist prescription/advice
     uploaded_by     VARCHAR(100),                            -- pathologist name/id
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
@@ -247,6 +248,9 @@ CREATE INDEX IF NOT EXISTS idx_lr_elder_id
 
 CREATE INDEX IF NOT EXISTS idx_lr_test_date
     ON lab_reports (test_date);
+
+ALTER TABLE lab_reports
+    ADD COLUMN IF NOT EXISTS prescription VARCHAR(2000);
 
 
 -- =============================================================================

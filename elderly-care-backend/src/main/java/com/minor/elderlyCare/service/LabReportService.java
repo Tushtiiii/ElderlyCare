@@ -37,6 +37,7 @@ public class LabReportService {
                 .dynamicData(request.getDynamicData())
                 .uploadedBy(currentUser.getName())
                 .notes(request.getNotes())
+                .prescription(request.getPrescription())
                 .build();
 
         return LabReportResponse.from(labReportRepository.save(report));
@@ -76,5 +77,17 @@ public class LabReportService {
                 .orElseThrow(() -> new ResourceNotFoundException("Lab report not found: " + reportId));
         elderAccessService.validateAccessAndGetElder(report.getElder().getId(), currentUser);
         labReportRepository.delete(report);
+    }
+
+    /** Update prescription text for an existing lab report. */
+    @Transactional
+    public LabReportResponse updatePrescription(UUID reportId, String prescription, User currentUser) {
+        LabReport report = labReportRepository.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lab report not found: " + reportId));
+
+        elderAccessService.validateAccessAndGetElder(report.getElder().getId(), currentUser);
+        report.setPrescription(prescription);
+
+        return LabReportResponse.from(labReportRepository.save(report));
     }
 }

@@ -46,6 +46,7 @@ public class LabReportResponse {
                 .uploadedBy(lr.getUploadedBy())
                 .dynamicData(lr.getDynamicData())
                 .notes(lr.getNotes())
+                .prescription(lr.getPrescription())
                 .createdAt(lr.getCreatedAt())
                 .build();
     }
@@ -59,6 +60,7 @@ public class LabReportResponse {
     private String uploadedBy;
     private java.util.Map<String, Object> dynamicData;
     private String notes;
+    private String prescription;
 
     private OffsetDateTime createdAt;
 }

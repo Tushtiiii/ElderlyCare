@@ -1,20 +1,21 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
+import { getLabReports } from '../../api/labReports';
+import { getMyElders } from '../../api/relationships';
+import { EmptyState, LabReportCard, LoadingState, SummaryCard } from '../../components/common';
 import { useAuth } from '../../context/AuthContext';
-import { getMyElders, getIncomingPendingRequests, getSentPendingRequests } from '../../api/relationships';
-import { RelationshipResponse, MainStackParamList } from '../../types';
-import { COLORS, FONT_SIZE, RADIUS, SPACING, SHADOW } from '../../theme';
-import { LoadingState, EmptyState, SummaryCard } from '../../components/common';
+import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
+import { LabReportResponse, MainStackParamList, RelationshipResponse } from '../../types';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 
@@ -23,21 +24,27 @@ export default function GuardianDashboardScreen() {
   const { user } = useAuth();
 
   const [elders, setElders] = useState<RelationshipResponse[]>([]);
-  const [incomingRequests, setIncomingRequests] = useState<RelationshipResponse[]>([]);
-  const [sentRequests, setSentRequests] = useState<RelationshipResponse[]>([]);
+  const [prescriptionHistory, setPrescriptionHistory] = useState<LabReportResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchElders = useCallback(async () => {
     try {
-      const [data, incoming, sent] = await Promise.all([
-        getMyElders(),
-        getIncomingPendingRequests(),
-        getSentPendingRequests(),
-      ]);
+      const data = await getMyElders();
       setElders(data);
-      setIncomingRequests(incoming);
-      setSentRequests(sent);
+
+      const reportsByElder = await Promise.all(
+        data.map(rel => getLabReports(rel.elder.id, 0, 20)),
+      );
+      const allReports = reportsByElder.flatMap(page => page.content);
+      const withPrescription = allReports.filter(
+        report => !!report.prescription && report.prescription.trim().length > 0,
+      );
+
+      withPrescription.sort(
+        (a, b) => new Date(b.testDate).getTime() - new Date(a.testDate).getTime(),
+      );
+      setPrescriptionHistory(withPrescription);
     } catch {}
   }, []);
 
@@ -77,44 +84,6 @@ export default function GuardianDashboardScreen() {
         </Text>
       </View>
 
-      {/* Pending Request Notifications */}
-      {incomingRequests.length > 0 && (
-        <TouchableOpacity
-          style={[styles.requestNotification, SHADOW.small]}
-          onPress={() => navigation.navigate('Relationships')}
-          activeOpacity={0.8}>
-          <Text style={styles.requestNotifIcon}>📩</Text>
-          <View style={styles.requestNotifContent}>
-            <Text style={styles.requestNotifTitle}>
-              {incomingRequests.length} Incoming Request{incomingRequests.length > 1 ? 's' : ''}
-            </Text>
-            <Text style={styles.requestNotifHint}>
-              Tap to view and accept connection requests
-            </Text>
-          </View>
-          <View style={styles.requestBadge}>
-            <Text style={styles.requestBadgeText}>{incomingRequests.length}</Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
-      {sentRequests.length > 0 && (
-        <TouchableOpacity
-          style={[styles.sentNotification, SHADOW.small]}
-          onPress={() => navigation.navigate('Relationships')}
-          activeOpacity={0.8}>
-          <Text style={styles.requestNotifIcon}>📤</Text>
-          <View style={styles.requestNotifContent}>
-            <Text style={styles.sentNotifTitle}>
-              {sentRequests.length} Pending Sent Request{sentRequests.length > 1 ? 's' : ''}
-            </Text>
-            <Text style={styles.requestNotifHint}>
-              Waiting for acceptance
-            </Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
       {/* Stats */}
       <View style={styles.statsRow}>
         <SummaryCard
@@ -135,7 +104,7 @@ export default function GuardianDashboardScreen() {
         <EmptyState
           icon="👴"
           message="No linked elders"
-          hint="Send a connection request to an elder to start monitoring"
+          hint="Use care code or email to link an elder and start monitoring"
         />
       ) : (
         elders.map(rel => (
@@ -166,6 +135,19 @@ export default function GuardianDashboardScreen() {
             </View>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
+        ))
+      )}
+
+      <Text style={styles.sectionTitle}>Doctor Prescription History</Text>
+      {prescriptionHistory.length === 0 ? (
+        <EmptyState
+          icon="💊"
+          message="No prescriptions yet"
+          hint="Prescriptions from linked elders will appear here"
+        />
+      ) : (
+        prescriptionHistory.slice(0, 8).map(report => (
+          <LabReportCard key={report.id} report={report} />
         ))
       )}
     </ScrollView>

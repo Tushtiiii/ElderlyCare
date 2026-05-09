@@ -1,10 +1,10 @@
-import apiClient from './client';
 import {
+  Page,
   VitalRecordRequest,
   VitalRecordResponse,
   VitalType,
-  Page,
 } from '../types';
+import apiClient from './client';
 
 /** POST /api/vitals — record a new vital reading */
 export const recordVital = (data: VitalRecordRequest): Promise<VitalRecordResponse> =>
@@ -43,7 +43,17 @@ export const getLatestVitals = (
   apiClient
     .get<VitalRecordResponse[]>(`/api/vitals/elder/${elderId}/latest`)
     .then(r => r.data);
-
+/** GET /api/vitals/elder/:elderId/history — paginated history for an elder */
+export const getVitalHistory = (
+  elderId: string,
+  page = 0,
+  size = 20,
+): Promise<Page<VitalRecordResponse>> =>
+  apiClient
+    .get<Page<VitalRecordResponse>>(`/api/vitals/elder/${elderId}/history`, {
+      params: { page, size },
+    })
+    .then(r => r.data);
 /** GET /api/vitals/elder/:id/trend — date-range trend */
 export const getVitalTrend = (
   elderId: string,
@@ -55,4 +65,12 @@ export const getVitalTrend = (
     .get<VitalRecordResponse[]>(`/api/vitals/elder/${elderId}/trend`, {
       params: { vitalType, from, to },
     })
+    .then(r => r.data);
+
+/** GET /api/vitals/elder/:elderId/latest-by-type — latest individual vitals */
+export const getVitalsLatestByType = (
+  elderId: string,
+): Promise<VitalRecordResponse[]> =>
+  apiClient
+    .get<VitalRecordResponse[]>(`/api/vitals/elder/${elderId}/latest`)
     .then(r => r.data);

@@ -1,20 +1,31 @@
 package com.minor.elderlyCare.controller;
 
-import com.minor.elderlyCare.dto.request.LabReportRequest;
-import com.minor.elderlyCare.dto.response.LabReportResponse;
-import com.minor.elderlyCare.security.CustomUserPrincipal;
-import com.minor.elderlyCare.service.LabReportService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
+import com.minor.elderlyCare.dto.request.LabReportPrescriptionUpdateRequest;
+import com.minor.elderlyCare.dto.request.LabReportRequest;
+import com.minor.elderlyCare.dto.response.LabReportResponse;
+import com.minor.elderlyCare.security.CustomUserPrincipal;
+import com.minor.elderlyCare.service.LabReportService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 /**
  * REST controller for managing lab reports.
@@ -25,6 +36,7 @@ import java.util.UUID;
  * GET    /api/lab-reports/elder/{elderId}           — All reports (paginated)
  * GET    /api/lab-reports/elder/{elderId}/search?testName=...  — Search by test name
  * GET    /api/lab-reports/{id}                      — Single report
+ * PATCH  /api/lab-reports/{id}/prescription         — Update prescription text
  * DELETE /api/lab-reports/{id}                      — Delete report
  * </pre>
  */
@@ -90,6 +102,17 @@ public class LabReportController {
         return ResponseEntity.ok(
                 labReportService.getLabReport(id, principal.getUser()));
     }
+
+        /** Update prescription text for an existing lab report. */
+        @PatchMapping("/{id}/prescription")
+        public ResponseEntity<LabReportResponse> updatePrescription(
+                        @PathVariable UUID id,
+                        @Valid @RequestBody LabReportPrescriptionUpdateRequest request,
+                        @AuthenticationPrincipal CustomUserPrincipal principal) {
+
+                return ResponseEntity.ok(
+                                labReportService.updatePrescription(id, request.getPrescription(), principal.getUser()));
+        }
 
     /** Delete a lab report. */
     @DeleteMapping("/{id}")

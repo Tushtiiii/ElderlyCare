@@ -1,35 +1,40 @@
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { acknowledgeAlert, getActiveAlerts } from '../../api/alerts';
-import { getActiveMedications } from '../../api/medications';
-import { getElderNetwork, getIncomingPendingRequests, getSentPendingRequests } from '../../api/relationships';
+import { getLabReports } from '../../api/labReports';
+import { getActiveMedicationsForElder } from '../../api/medications';
+import { getElderNetwork } from '../../api/relationships';
 import { getLatestVitals } from '../../api/vitals';
 import {
-  AlertBanner,
-  EmptyState,
-  LoadingState,
-  MedicationCard,
-  SummaryCard,
-  VitalCard,
+    AlertBanner,
+    EmptyState,
+    LabReportCard,
+    LoadingState,
+    MedicationCard,
+    SummaryCard,
+    VitalCard,
 } from '../../components/common';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
 import {
-  HealthAlertResponse,
-  MainStackParamList,
-  MedicationResponse,
-  RelationshipResponse,
-  VitalRecordResponse,
+    HealthAlertResponse,
+    LabReportResponse,
+    MainStackParamList,
+    MedicationResponse,
+    RelationshipResponse,
+    VitalRecordResponse,
 } from '../../types';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
@@ -41,8 +46,7 @@ export default function ElderDashboardScreen() {
   const [vitals, setVitals] = useState<VitalRecordResponse[]>([]);
   const [alerts, setAlerts] = useState<HealthAlertResponse[]>([]);
   const [medications, setMedications] = useState<MedicationResponse[]>([]);
-  const [incomingRequests, setIncomingRequests] = useState<RelationshipResponse[]>([]);
-  const [sentRequests, setSentRequests] = useState<RelationshipResponse[]>([]);
+  const [prescriptionHistory, setPrescriptionHistory] = useState<LabReportResponse[]>([]);
   const [careTeam, setCareTeam] = useState<RelationshipResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,20 +54,22 @@ export default function ElderDashboardScreen() {
   const fetchData = useCallback(async () => {
     if (!user) return;
     try {
-      const [v, a, m, incoming, sent, network] = await Promise.all([
+      const [v, a, m, network, reportsPage] = await Promise.all([
         getLatestVitals(user.id),
         getActiveAlerts(user.id),
-        getActiveMedications(user.id),
-        getIncomingPendingRequests(),
-        getSentPendingRequests(),
+        getActiveMedicationsForElder(user.id),
         getElderNetwork(user.id),
+        getLabReports(user.id, 0, 30),
       ]);
       setVitals(v);
       setAlerts(a);
       setMedications(m);
-      setIncomingRequests(incoming);
-      setSentRequests(sent);
       setCareTeam(network);
+      setPrescriptionHistory(
+        reportsPage.content.filter(
+          report => !!report.prescription && report.prescription.trim().length > 0,
+        ),
+      );
     } catch {}
   }, [user]);
 
@@ -88,10 +94,17 @@ export default function ElderDashboardScreen() {
     } catch {}
   };
 
+  const copyCareCode = async () => {
+    if (!user?.id) return;
+    await Clipboard.setStringAsync(user.id);
+    Alert.alert('Copied!', 'Your Care Code has been copied to clipboard.');
+  };
+
   if (loading) return <LoadingState message="Loading your health data…" />;
 
   const abnormalCount = vitals.filter(v => v.isAbnormal).length;
-  const careCode = user?.id?.slice(0, 8) ?? '';
+  // Use the full ID as the care code for linking, but show it clearly
+  const careCode = user?.id ?? '';
 
   return (
     <ScrollView
@@ -114,13 +127,18 @@ export default function ElderDashboardScreen() {
       {/* Shareable care code & care team */}
       {user && (
         <View style={[styles.careCard, SHADOW.small]}>
-          <Text style={styles.careCodeLabel}>Your care code</Text>
+          <View style={styles.careCodeHeader}>
+            <Text style={styles.careCodeLabel}>Your care code</Text>
+            <TouchableOpacity onPress={copyCareCode} style={styles.copyBadge}>
+              <Text style={styles.copyBadgeText}>Copy Code</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.careCodeValue} selectable>
             {careCode}
           </Text>
           <Text style={styles.careCodeHint}>
             Share this code with guardians, doctors, and pathologists so they
-            know they are linking to the right profile.
+            can connect and access your health monitoring dashboard.
           </Text>
 
           {careTeam.length > 0 && (
@@ -134,44 +152,6 @@ export default function ElderDashboardScreen() {
             </View>
           )}
         </View>
-      )}
-
-      {/* Pending Request Notifications */}
-      {incomingRequests.length > 0 && (
-        <TouchableOpacity
-          style={[styles.requestNotification, SHADOW.small]}
-          onPress={() => navigation.navigate('Relationships')}
-          activeOpacity={0.8}>
-          <Text style={styles.requestNotifIcon}>📩</Text>
-          <View style={styles.requestNotifContent}>
-            <Text style={styles.requestNotifTitle}>
-              {incomingRequests.length} Incoming Request{incomingRequests.length > 1 ? 's' : ''}
-            </Text>
-            <Text style={styles.requestNotifHint}>
-              Tap to view and accept connection requests
-            </Text>
-          </View>
-          <View style={styles.requestBadge}>
-            <Text style={styles.requestBadgeText}>{incomingRequests.length}</Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
-      {sentRequests.length > 0 && (
-        <TouchableOpacity
-          style={[styles.sentNotification, SHADOW.small]}
-          onPress={() => navigation.navigate('Relationships')}
-          activeOpacity={0.8}>
-          <Text style={styles.requestNotifIcon}>📤</Text>
-          <View style={styles.requestNotifContent}>
-            <Text style={styles.sentNotifTitle}>
-              {sentRequests.length} Pending Sent Request{sentRequests.length > 1 ? 's' : ''}
-            </Text>
-            <Text style={styles.requestNotifHint}>
-              Waiting for acceptance
-            </Text>
-          </View>
-        </TouchableOpacity>
       )}
 
       {/* Active Alerts */}
@@ -221,7 +201,7 @@ export default function ElderDashboardScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionBtn, SHADOW.small]}
-          onPress={() => navigation.navigate('AddLabReport')}
+          onPress={() => navigation.navigate('AddLabReport', { elderId: user?.id ?? '' })}
           activeOpacity={0.8}>
           <Text style={styles.actionIcon}>🧪</Text>
           <Text style={styles.actionLabel}>Add Lab Report</Text>
@@ -260,6 +240,20 @@ export default function ElderDashboardScreen() {
           <MedicationCard key={m.id} medication={m} />
         ))
       )}
+
+      {/* Prescription History */}
+      <Text style={styles.sectionTitle}>Doctor Prescription History</Text>
+      {prescriptionHistory.length === 0 ? (
+        <EmptyState
+          icon="💊"
+          message="No prescriptions yet"
+          hint="Prescriptions added by doctors/pathologists will appear here"
+        />
+      ) : (
+        prescriptionHistory.slice(0, 5).map(report => (
+          <LabReportCard key={report.id} report={report} />
+        ))
+      )}
     </ScrollView>
   );
 }
@@ -284,8 +278,25 @@ const styles = StyleSheet.create({
   },
   careCodeLabel: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.mutedText ?? 'rgba(0,0,0,0.6)',
-    marginBottom: 2,
+    color: COLORS.subtext,
+  },
+  careCodeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  copyBadge: {
+    backgroundColor: COLORS.primary + '15',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.sm,
+  },
+  copyBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.primary,
+    textTransform: 'uppercase',
   },
   careCodeValue: {
     fontSize: FONT_SIZE.lg,
@@ -296,7 +307,7 @@ const styles = StyleSheet.create({
   },
   careCodeHint: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.mutedText ?? 'rgba(0,0,0,0.6)',
+    color: COLORS.subtext,
     marginBottom: SPACING.sm,
   },
   careTeamSection: {

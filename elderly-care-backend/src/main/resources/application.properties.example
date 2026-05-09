@@ -47,3 +47,9 @@ server.port=8080
 app.jwt.secret=your_base64_encoded_256bit_secret_key
 # Token lifetime: 24 hours in milliseconds
 app.jwt.expiration-ms=86400000
+
+# ─── Ollama (Local LLM) ─────────────────────────────────────────────────────
+app.ollama.base-url=http://localhost:11434
+app.ollama.model=deepseek-r1:1.5b
+app.ollama.connect-timeout=3s
+app.ollama.read-timeout=25s

@@ -1,324 +1,377 @@
-import { DocumentPickerResult } from 'expo-document-picker';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import RNPickerSelect from 'react-native-picker-select';
+import * as labReportApi from '../../api/labReports';
+import * as relationshipApi from '../../api/relationships';
+import ErrorState from '../../components/common/ErrorState';
+import LabReportCard from '../../components/common/LabReportCard';
+import LoadingState from '../../components/common/LoadingState';
+import SummaryCard from '../../components/common/SummaryCard';
+import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../../theme';
+import { LabReportResponse, MainStackParamList, RelationshipResponse, UserResponse } from '../../types';
 
-import { getMyElders } from '../../api/relationships';
-import { reportApi } from '../../api/reports';
-import DynamicForm from '../../components/DynamicForm';
-import FileUploadComponent from '../../components/FileUploadComponent';
-import { theme } from '../../constants/theme';
-import { RelationshipResponse } from '../../types';
-import { Report, ReportSchema } from '../../types/reports';
+type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
 
-const PathologistDashboardScreen = () => {
-  const [elders, setElders] = useState<{ label: string; value: string }[]>([]);
-  const [selectedElder, setSelectedElder] = useState<string | null>(null);
-  const [reportType, setReportType] = useState<string | null>(null);
-  const [schema, setSchema] = useState<ReportSchema | null>(null);
-  const [formData, setFormData] = useState<Record<string, string | number>>({});
-  const [selectedFile, setSelectedFile] = useState<DocumentPickerResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [reports, setReports] = useState<Report[]>([]);
+export default function PathologistDashboardScreen() {
+  const navigation = useNavigation<NavigationProp>();
+  const [patients, setPatients] = useState<UserResponse[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<UserResponse | null>(null);
+  const [labReports, setLabReports] = useState<LabReportResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const reportTypes = [
-    { label: 'Blood Test', value: 'BLOOD_TEST' },
-    { label: 'ECG', value: 'ECG' },
-    { label: 'X-Ray', value: 'X_RAY' },
-    { label: 'Urine Test', value: 'URINE_TEST' },
-  ];
+  const fetchPatients = useCallback(async () => {
+    try {
+      const relationships: RelationshipResponse[] = await relationshipApi.getMyElders();
+      const patientList = relationships.map(rel => rel.elder);
+      setPatients(patientList);
+      
+      if (patientList.length > 0 && !selectedPatient) {
+        setSelectedPatient(patientList[0]);
+      }
+    } catch (err) {
+      console.error('Fetch patients error:', err);
+      setError('Failed to load linked patients.');
+    }
+  }, [selectedPatient]);
 
-  useEffect(() => {
-    fetchElders();
+  const fetchReports = useCallback(async (patientId: string) => {
+    try {
+      const reports = await labReportApi.getLatestLabReports(patientId);
+      setLabReports(reports);
+    } catch (err) {
+      console.error('Fetch reports error:', err);
+    }
   }, []);
 
-  const fetchElders = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
-    try {
-      const data = await getMyElders();
-      const formattedElders = data.map((rel: RelationshipResponse) => ({
-        label: rel.elder.name,
-        value: rel.elder.id,
-      }));
-      setElders(formattedElders);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to fetch elders');
-    } finally {
-      setLoading(false);
+    setError(null);
+    await fetchPatients();
+    setLoading(false);
+  }, [fetchPatients]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (selectedPatient) {
+      fetchReports(selectedPatient.id);
     }
-  };
+  }, [selectedPatient, fetchReports]);
 
-  const handleReportTypeChange = async (value: string, initialData?: Record<string, string | number>) => {
-    setReportType(value);
-    if (!value) {
-      setSchema(null);
-      setFormData({});
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const reportSchema = await reportApi.getReportSchema(value);
-      setSchema(reportSchema);
-      setFormData(initialData ?? {});
-    } catch (error) {
-      Alert.alert('Error', 'Failed to fetch report schema');
-      setSchema(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFormChange = (name: string, value: string | number) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const loadReportHistory = async (elderId: string) => {
-    setHistoryLoading(true);
-    try {
-      const data = await reportApi.getReportsForElder(elderId);
-      setReports(data);
-    } catch {
-      Alert.alert('Error', 'Failed to load report history');
-      setReports([]);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedElder || !reportType || !selectedFile || selectedFile.canceled) {
-      Alert.alert('Error', 'Please fill all fields and select a file');
-      return;
-    }
-
-    // Basic client-side validation based on schema (if provided)
-    if (schema) {
-      for (const field of schema.fields) {
-        const raw = formData[field.name];
-        const label = field.label || field.name;
-
-        if (field.required && (raw === undefined || raw === null || raw === '')) {
-          Alert.alert('Validation Error', `Please enter ${label}.`);
-          return;
-        }
-
-        if (field.type === 'number') {
-          const num = typeof raw === 'number' ? raw : parseFloat(String(raw ?? ''));
-          if (isNaN(num)) {
-            Alert.alert('Validation Error', `${label} must be a number.`);
-            return;
-          }
-          if (field.min !== undefined && num < field.min) {
-            Alert.alert('Validation Error', `${label} should be at least ${field.min}.`);
-            return;
-          }
-          if (field.max !== undefined && num > field.max) {
-            Alert.alert('Validation Error', `${label} should be at most ${field.max}.`);
-            return;
-          }
-        }
+  useFocusEffect(
+    useCallback(() => {
+      fetchPatients();
+      if (selectedPatient) {
+        fetchReports(selectedPatient.id);
       }
-    }
+    }, [fetchPatients, fetchReports, selectedPatient]),
+  );
 
-    setUploading(true);
-    try {
-      await reportApi.uploadReport({
-        elderId: selectedElder,
-        reportType,
-        reportData: formData,
-        file: selectedFile.assets[0],
-      });
-      Alert.alert('Success', 'Report uploaded successfully');
-      // Reset form
-      setReportType(null);
-      setSchema(null);
-      setFormData({});
-      setSelectedFile(null);
-      await loadReportHistory(selectedElder);
-    } catch (error: any) {
-      Alert.alert('Upload Failed', error.response?.data?.message || 'Something went wrong');
-    } finally {
-      setUploading(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchPatients();
+    if (selectedPatient) {
+      await fetchReports(selectedPatient.id);
     }
+    setRefreshing(false);
   };
 
-  if (loading && !elders.length) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
+  const handleAddReport = () => {
+    if (!selectedPatient) {
+      Alert.alert('Selection Required', 'Please select a patient first.');
+      return;
+    }
+    navigation.navigate('AddLabReport', { elderId: selectedPatient.id });
+  };
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} onRetry={loadData} />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Pathologist Dashboard</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.welcomeText}>Pathologist Dashboard</Text>
+        <TouchableOpacity 
+          style={styles.linkButton}
+          onPress={() => navigation.navigate('RequestConnection')}
+        >
+          <Text style={styles.linkButtonText}>+ Link New Patient</Text>
+        </TouchableOpacity>
+      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>Select Elder</Text>
-        <RNPickerSelect
-          onValueChange={(value) => {
-            setSelectedElder(value);
-            if (value) {
-              loadReportHistory(value);
-            } else {
-              setReports([]);
-            }
-          }}
-          items={elders}
-          placeholder={{ label: 'Select an elder...', value: null }}
-          style={pickerStyles}
+      <View style={styles.patientSelector}>
+        <Text style={styles.sectionTitle}>Select Patient</Text>
+        <FlatList
+          horizontal
+          data={patients}
+          keyExtractor={(item) => item.id}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.patientList}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.patientCard}
+              onPress={() => setSelectedPatient(item)}
+            >
+              <View style={[
+                styles.avatar,
+                { backgroundColor: selectedPatient?.id === item.id ? COLORS.primary : COLORS.border }
+              ]}>
+                <Text style={styles.avatarText}>{item.name ? item.name.charAt(0) : '?'}</Text>
+              </View>
+              <Text 
+                 numberOfLines={1} 
+                 style={[
+                   styles.patientName,
+                   selectedPatient?.id === item.id && styles.patientNameActive
+                 ]}
+              >
+                {item.name ? item.name.split(' ')[0] : 'Unknown'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No patients linked yet.</Text>
+          }
         />
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>Report Type</Text>
-        <RNPickerSelect
-          onValueChange={value => handleReportTypeChange(value)}
-          items={reportTypes}
-          placeholder={{ label: 'Select report type...', value: null }}
-          style={pickerStyles}
-        />
-      </View>
-
-      {loading && reportType && (
-        <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: 20 }} />
-      )}
-
-      {schema && (
-        <DynamicForm 
-          schema={schema} 
-          formData={formData} 
-          onFormChange={handleFormChange} 
-        />
-      )}
-
-      <FileUploadComponent 
-        onFileSelect={setSelectedFile} 
-        selectedFile={selectedFile} 
-      />
-
-      <TouchableOpacity 
-        style={[styles.submitButton, (!selectedElder || !reportType || uploading) && styles.disabledButton]} 
-        onPress={handleSubmit}
-        disabled={uploading}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {uploading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitText}>Upload Report</Text>
-        )}
-      </TouchableOpacity>
+        {selectedPatient ? (
+          <>
+            <View style={styles.statsRow}>
+              <SummaryCard
+                icon="📄"
+                title="Total Reports"
+                value={labReports.length}
+                style={styles.statCard}
+              />
+              <SummaryCard
+                icon="🔬"
+                title="Tests Tracked"
+                value={new Set(labReports.map(r => r.testName)).size}
+                style={styles.statCard}
+              />
+            </View>
 
-      {/* Report History */}
-      <View style={[styles.section, { marginTop: 32 }] }>
-        <Text style={styles.label}>Report History</Text>
-        {!selectedElder && (
-          <Text style={styles.historyHint}>Select an elder to view their reports.</Text>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Submit report for:</Text>
+                <Text style={styles.selectedPatientText}>{selectedPatient.name}</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.addButton}
+                onPress={handleAddReport}
+              >
+                <Text style={styles.addButtonText}>Upload Report</Text>
+              </TouchableOpacity>
+            </View>
+
+            {labReports.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyResultsText}>No lab reports found for this patient.</Text>
+                <TouchableOpacity style={styles.outlineButton} onPress={handleAddReport}>
+                  <Text style={styles.outlineButtonText}>Upload First Report</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              labReports.map(report => (
+                <LabReportCard
+                  key={report.id}
+                  report={report}
+                />
+              ))
+            )}
+          </>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyTitle}>Welcome back!</Text>
+            <Text style={styles.emptySub}>Select a patient from the list above to view or upload lab reports.</Text>
+            <TouchableOpacity 
+              style={styles.bigLinkButton}
+              onPress={() => navigation.navigate('RequestConnection')}
+            >
+              <Text style={styles.bigLinkButtonText}>Link a Patient with Care Code</Text>
+            </TouchableOpacity>
+          </View>
         )}
-        {selectedElder && historyLoading && (
-          <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: 16 }} />
-        )}
-        {selectedElder && !historyLoading && reports.length === 0 && (
-          <Text style={styles.historyHint}>No reports uploaded yet for this elder.</Text>
-        )}
-        {selectedElder && !historyLoading && reports.map(report => (
-          <TouchableOpacity
-            key={report.id}
-            style={styles.historyItem}
-            activeOpacity={0.8}
-            onPress={() => handleReportTypeChange(report.reportType, report.reportData)}>
-            <Text style={styles.historyTitle}>{report.reportType}</Text>
-            <Text style={styles.historyMeta}>
-              Uploaded by {report.uploadedBy} on {new Date(report.createdAt).toLocaleString()}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: COLORS.background,
   },
-  content: {
-    padding: 20,
+  header: {
+    padding: SPACING.lg,
+    paddingTop: 60,
+    backgroundColor: COLORS.card,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
-  centered: {
-    flex: 1,
+  welcomeText: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  linkButton: {
+    backgroundColor: COLORS.primary + '15',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.full,
+  },
+  linkButtonText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: FONT_SIZE.sm,
+  },
+  patientSelector: {
+    backgroundColor: COLORS.card,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    marginTop: SPACING.sm,
+  },
+  selectedPatientText: {
+    paddingHorizontal: SPACING.lg,
+    color: COLORS.primary,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '700',
+  },
+  sectionTitle: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '700',
+    color: COLORS.text,
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.sm,
+  },
+  patientList: {
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.md,
+  },
+  patientCard: {
+    alignItems: 'center',
+    width: 70,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 4,
   },
-  title: {
-    fontSize: 24,
+  avatarText: {
+    color: COLORS.card,
+    fontSize: FONT_SIZE.lg,
     fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: 20,
   },
-  section: {
-    marginBottom: 20,
+  patientName: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.subtext,
+    textAlign: 'center',
   },
-  label: {
-    fontSize: 14,
+  patientNameActive: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  scrollContent: {
+    padding: SPACING.lg,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  statCard: {
+    backgroundColor: COLORS.card,
+  },
+  addButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.md,
+  },
+  addButtonText: {
+    color: COLORS.card,
     fontWeight: '600',
-    color: theme.colors.textSecondary,
-    marginBottom: 8,
   },
-  submitButton: {
-    backgroundColor: theme.colors.primary,
-    padding: 16,
-    borderRadius: 12,
+  emptyContainer: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
-  disabledButton: {
-    backgroundColor: theme.colors.border,
+  emptyText: {
+    color: COLORS.subtext,
+    fontStyle: 'italic',
+    paddingLeft: SPACING.lg,
   },
-  submitText: {
-    color: '#fff',
-    fontSize: 18,
+  emptyResultsText: {
+    color: COLORS.subtext,
+    marginBottom: SPACING.md,
+  },
+  outlineButton: {
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
+  },
+  outlineButtonText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  emptyTitle: {
+    fontSize: FONT_SIZE.xl,
     fontWeight: 'bold',
+    color: COLORS.text,
+    marginTop: 20,
+  },
+  emptySub: {
+    fontSize: FONT_SIZE.md,
+    color: COLORS.subtext,
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 30,
+    paddingHorizontal: 20,
+  },
+  bigLinkButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.lg,
+  },
+  bigLinkButtonText: {
+    color: COLORS.card,
+    fontWeight: 'bold',
+    fontSize: FONT_SIZE.md,
   },
 });
-
-const pickerStyles = {
-  inputIOS: {
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 8,
-    color: theme.colors.text,
-    paddingRight: 30,
-    backgroundColor: '#fff',
-  },
-  inputAndroid: {
-    fontSize: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 8,
-    color: theme.colors.text,
-    paddingRight: 30,
-    backgroundColor: '#fff',
-  },
-};
-
-export default PathologistDashboardScreen;

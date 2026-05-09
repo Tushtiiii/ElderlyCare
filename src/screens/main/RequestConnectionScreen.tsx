@@ -11,7 +11,7 @@ import {
     View,
 } from 'react-native';
 
-import { requestRelationship, requestRelationshipByCode } from '../../api/relationships';
+import { getMyElders, requestRelationship, requestRelationshipByCode } from '../../api/relationships';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
 import { RelationshipResponse } from '../../types';
@@ -25,7 +25,7 @@ export default function RequestConnectionScreen() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RelationshipResponse | null>(null);
 
-  const handleSendRequest = async () => {
+  const handleConnectByEmail = async () => {
     if (!targetEmail.trim()) {
       Alert.alert('Missing Email', 'Please enter the email address to connect with.');
       return;
@@ -37,39 +37,72 @@ export default function RequestConnectionScreen() {
 
     setLoading(true);
     try {
+      if (!isElder) {
+        const linked = await getMyElders();
+        const alreadyLinked = linked.some(
+          rel => rel.elder.email.toLowerCase() === targetEmail.trim().toLowerCase(),
+        );
+        if (alreadyLinked) {
+          Alert.alert('Already Connected', 'This elder is already linked to your account.');
+          return;
+        }
+      }
+
       const res = await requestRelationship({
         targetEmail: targetEmail.trim().toLowerCase(),
       });
       setResult(res);
       setTargetEmail('');
     } catch (err: any) {
+      if (err?.response?.status === 409) {
+        Alert.alert('Already Connected', 'This relationship already exists.');
+        return;
+      }
+
       const msg =
         err?.response?.data?.detail ??
         err?.response?.data?.message ??
-        'Failed to send request. Make sure the email is registered and has the correct role.';
-      Alert.alert('Request Failed', msg);
+        'Failed to connect. Make sure the email is registered and has the correct role.';
+      Alert.alert('Connection Failed', msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSendRequestByCode = async () => {
-    if (!careCode.trim()) {
+  const handleConnectByCode = async () => {
+    const normalizedCode = careCode.trim();
+
+    if (!normalizedCode) {
       Alert.alert('Missing Care Code', 'Please enter the elder care code.');
       return;
     }
 
     setLoading(true);
     try {
-      const res = await requestRelationshipByCode(careCode.trim());
+      const linked = await getMyElders();
+      const alreadyLinked = linked.some(
+        rel => rel.elder.id.toLowerCase() === normalizedCode.toLowerCase(),
+      );
+      if (alreadyLinked) {
+        setCareCode('');
+        Alert.alert('Already Connected', 'This elder is already linked to your account.');
+        return;
+      }
+
+      const res = await requestRelationshipByCode(normalizedCode);
       setResult(res);
       setCareCode('');
     } catch (err: any) {
+      if (err?.response?.status === 409) {
+        Alert.alert('Already Connected', 'This elder is already linked to your account.');
+        return;
+      }
+
       const msg =
         err?.response?.data?.detail ??
         err?.response?.data?.message ??
-        'Failed to send request. Make sure the code is correct and belongs to an elder.';
-      Alert.alert('Request Failed', msg);
+        'Failed to connect. Make sure the code is correct and belongs to an elder.';
+      Alert.alert('Connection Failed', msg);
     } finally {
       setLoading(false);
     }
@@ -99,8 +132,8 @@ export default function RequestConnectionScreen() {
           </Text>
           <Text style={styles.infoBannerDesc}>
             {isElder
-              ? 'Enter the email of a Guardian (CHILD account). They will receive a connection request to accept.'
-              : 'Enter the email of an Elder. They will receive a connection request to accept.'}
+              ? 'Enter the email of a Guardian (CHILD account) to connect immediately.'
+              : 'Enter the email of an Elder to connect immediately.'}
           </Text>
         </View>
       </View>
@@ -108,7 +141,7 @@ export default function RequestConnectionScreen() {
       {result === null ? (
         /* ── Send Form ───────────────────────────────────────────────────── */
         <View style={[styles.card, SHADOW.medium]}>
-          <Text style={styles.cardTitle}>Send Connection Request</Text>
+          <Text style={styles.cardTitle}>Create Connection</Text>
 
           <Text style={styles.label}>
             {targetRoleEmoji} Email of {targetRoleLabel}
@@ -123,18 +156,18 @@ export default function RequestConnectionScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="send"
-            onSubmitEditing={handleSendRequest}
+            onSubmitEditing={handleConnectByEmail}
           />
 
           <TouchableOpacity
             style={[styles.btn, loading && styles.btnDisabled]}
-            onPress={handleSendRequest}
+            onPress={handleConnectByEmail}
             disabled={loading}
             activeOpacity={0.8}>
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.btnText}>Send Request</Text>
+              <Text style={styles.btnText}>Connect Now</Text>
             )}
           </TouchableOpacity>
 
@@ -151,11 +184,11 @@ export default function RequestConnectionScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="send"
-                onSubmitEditing={handleSendRequestByCode}
+                onSubmitEditing={handleConnectByCode}
               />
               <TouchableOpacity
                 style={[styles.btnSecondary, loading && styles.btnDisabled]}
-                onPress={handleSendRequestByCode}
+                onPress={handleConnectByCode}
                 disabled={loading}
                 activeOpacity={0.8}>
                 {loading ? (
@@ -169,10 +202,9 @@ export default function RequestConnectionScreen() {
 
           <View style={styles.noteBox}>
             <Text style={styles.noteText}>
-              ℹ️ The connection is PENDING until the other person accepts it.
-              The elder shares their care code from their dashboard; guardians,
-              doctors, and pathologists can use that code here to request
-              access.
+              ℹ️ Connections are created immediately. The elder shares their
+              care code from their dashboard; guardians, doctors, and
+              pathologists can use that code here for direct access.
             </Text>
           </View>
         </View>
@@ -181,20 +213,15 @@ export default function RequestConnectionScreen() {
         <View style={[styles.card, SHADOW.medium]}>
           <View style={styles.successHeader}>
             <Text style={styles.successIcon}>🎉</Text>
-            <Text style={styles.successTitle}>Request Sent!</Text>
+            <Text style={styles.successTitle}>Connected!</Text>
           </View>
 
           <Text style={styles.successDesc}>
-            Your connection request is now{' '}
-            <Text style={styles.pendingBold}>PENDING</Text>. Share the
-            Relationship ID below with{' '}
+            You are now linked with{' '}
             <Text style={styles.pendingBold}>
-              {result.status === 'PENDING'
-                ? (isElder ? result.child.name : result.elder.name)
-                : 'the other person'}
-            </Text>{' '}
-            so they can accept it from the{' '}
-            <Text style={styles.pendingBold}>My Connections</Text> screen.
+              {isElder ? result.child.name : result.elder.name}
+            </Text>
+            . Access is active immediately.
           </Text>
 
           {/* Relationship ID display */}
@@ -210,7 +237,7 @@ export default function RequestConnectionScreen() {
             <Row
               label="Status"
               value={result.status}
-              valueStyle={{ color: COLORS.warning, fontWeight: '700' }}
+              valueStyle={{ color: COLORS.accent, fontWeight: '700' }}
             />
           </View>
 
@@ -218,7 +245,7 @@ export default function RequestConnectionScreen() {
             style={styles.newBtn}
             onPress={handleNewRequest}
             activeOpacity={0.8}>
-            <Text style={styles.newBtnText}>Send Another Request</Text>
+            <Text style={styles.newBtnText}>Create Another Connection</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -322,6 +349,25 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.6 },
   btnText: { color: '#fff', fontSize: FONT_SIZE.md, fontWeight: '700' },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: SPACING.md,
+  },
+  btnSecondary: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+  },
+  btnSecondaryText: {
+    color: COLORS.primary,
+    fontSize: FONT_SIZE.md,
+    fontWeight: '700',
+  },
 
   noteBox: {
     backgroundColor: '#FFF8E1',

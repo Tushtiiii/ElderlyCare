@@ -1,10 +1,10 @@
 import React from 'react';
 import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { useAuth } from '../../context/AuthContext';
@@ -41,8 +41,17 @@ export default function ProfileScreen() {
   };
 
   const isElder = user?.role === 'ELDER';
-  const roleColor = isElder ? '#7B1FA2' : COLORS.primary;
-  const roleLabel = isElder ? '👴 Elder' : '👨‍👩‍👦 Guardian';
+  const isDoctor = user?.role === 'DOCTOR';
+  const isPathologist = user?.role === 'PATHOLOGIST';
+  const isGuardian = user?.role === 'CHILD';
+
+  const roleColor = isElder ? '#7B1FA2' : isDoctor ? COLORS.primary : isPathologist ? '#4CAF50' : COLORS.primary;
+  
+  let roleLabel = 'User';
+  if (isElder) roleLabel = '👴 Elder';
+  else if (isGuardian) roleLabel = '👨‍👩‍👦 Guardian';
+  else if (isDoctor) roleLabel = '👨‍⚕️ Doctor';
+  else if (isPathologist) roleLabel = '🔬 Pathologist';
 
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString(undefined, {

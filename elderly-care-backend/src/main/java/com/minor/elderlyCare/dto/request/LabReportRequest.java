@@ -52,4 +52,7 @@ public class LabReportRequest {
     private java.util.Map<String, Object> dynamicData;
 
     private String notes;
+
+    @Size(max = 2000)
+    private String prescription;
 }

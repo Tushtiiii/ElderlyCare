@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.minor.elderlyCare.dto.request.RelationshipCodeRequest;
 import com.minor.elderlyCare.dto.request.RelationshipRequest;
 import com.minor.elderlyCare.dto.response.RelationshipResponse;
-import com.minor.elderlyCare.exception.DuplicateResourceException;
 import com.minor.elderlyCare.exception.ResourceNotFoundException;
 import com.minor.elderlyCare.model.ElderChildRelationship;
 import com.minor.elderlyCare.model.RelationshipStatus;
@@ -29,7 +28,7 @@ public class RelationshipService {
     private final ElderChildRelationshipRepository relationshipRepository;
     private final ElderAccessService               elderAccessService;
 
-    // ── Request a monitoring connection ───────────────────────────────────────
+    // ── Create a monitoring connection ───────────────────────────────────────
 
     @Transactional
     public RelationshipResponse requestRelationship(UUID currentUserId,
@@ -44,8 +43,8 @@ public class RelationshipService {
 
         // Cannot connect with yourself
         if (currentUser.getId().equals(targetUser.getId())) {
-            throw new IllegalStateException(
-                    "You cannot send a monitoring request to yourself.");
+                throw new IllegalStateException(
+                    "You cannot create a monitoring connection with yourself.");
         }
 
         // Exactly one participant must be an ELDER; the other is a viewer
@@ -64,25 +63,36 @@ public class RelationshipService {
         User elder = currentIsElder ? currentUser : targetUser;
         User child = currentIsElder ? targetUser : currentUser;
 
-        if (relationshipRepository.existsByElderIdAndChildId(elder.getId(), child.getId())) {
-            throw new DuplicateResourceException(
-                    "A monitoring relationship between these two users already exists.");
+        ElderChildRelationship existing = relationshipRepository
+            .findByElderIdAndChildId(elder.getId(), child.getId())
+            .orElse(null);
+
+        if (existing != null) {
+            if (existing.getStatus() == RelationshipStatus.REVOKED) {
+            existing.setStatus(RelationshipStatus.ACTIVE);
+            existing.setRequestedBy(currentUser);
+            return RelationshipResponse.from(relationshipRepository.save(existing));
+            }
+
+            // Idempotent behavior: if already linked, return the existing relationship
+            // instead of failing with 409.
+            return RelationshipResponse.from(existing);
         }
 
         ElderChildRelationship relationship = ElderChildRelationship.builder()
                 .elder(elder)
                 .child(child)
                 .requestedBy(currentUser)
-                .status(RelationshipStatus.PENDING)
+                .status(RelationshipStatus.ACTIVE)
                 .build();
 
         return RelationshipResponse.from(relationshipRepository.save(relationship));
     }
 
     /**
-     * Request a relationship using an elder's care code (their UUID string).
+     * Create a relationship using an elder's care code (their UUID string).
      * Intended for non-elder roles (CHILD / DOCTOR / PATHOLOGIST) to
-     * connect to an elder without knowing their email.
+     * connect to an elder without any approval step.
      */
     @Transactional
     public RelationshipResponse requestRelationshipByCode(UUID currentUserId,
@@ -108,25 +118,36 @@ public class RelationshipService {
         if (currentUser.getRole() == Role.ELDER) {
             throw new IllegalStateException(
                     "Elders should share their care code; guardians/doctors/pathologists " +
-                    "use it to request access.");
+                    "use it to connect.");
         }
 
-        if (relationshipRepository.existsByElderIdAndChildId(elder.getId(), currentUser.getId())) {
-            throw new DuplicateResourceException(
-                    "A monitoring relationship between these two users already exists.");
+        ElderChildRelationship existing = relationshipRepository
+            .findByElderIdAndChildId(elder.getId(), currentUser.getId())
+            .orElse(null);
+
+        if (existing != null) {
+            if (existing.getStatus() == RelationshipStatus.REVOKED) {
+            existing.setStatus(RelationshipStatus.ACTIVE);
+            existing.setRequestedBy(currentUser);
+            return RelationshipResponse.from(relationshipRepository.save(existing));
+            }
+
+            // Idempotent behavior: if already linked, return the existing relationship
+            // instead of failing with 409.
+            return RelationshipResponse.from(existing);
         }
 
         ElderChildRelationship relationship = ElderChildRelationship.builder()
                 .elder(elder)
                 .child(currentUser)
                 .requestedBy(currentUser)
-                .status(RelationshipStatus.PENDING)
+                .status(RelationshipStatus.ACTIVE)
                 .build();
 
         return RelationshipResponse.from(relationshipRepository.save(relationship));
     }
 
-    // ── Accept a PENDING request ──────────────────────────────────────────────
+    // ── Accept endpoint is retained for compatibility ────────────────────────
 
     @Transactional
     public RelationshipResponse acceptRelationship(UUID currentUserId, UUID relationshipId) {
@@ -134,16 +155,9 @@ public class RelationshipService {
 
         ensureParticipant(currentUserId, relationship);
 
-        // Only the recipient (non-requester) can accept
-        if (relationship.getRequestedBy().getId().equals(currentUserId)) {
+        if (relationship.getStatus() == RelationshipStatus.REVOKED) {
             throw new IllegalStateException(
-                    "You cannot accept a request that you sent.");
-        }
-
-        if (relationship.getStatus() != RelationshipStatus.PENDING) {
-            throw new IllegalStateException(
-                    "Only PENDING relationships can be accepted. Current status: "
-                    + relationship.getStatus());
+                "Revoked relationships cannot be accepted.");
         }
 
         relationship.setStatus(RelationshipStatus.ACTIVE);
@@ -202,7 +216,7 @@ public class RelationshipService {
                 .collect(Collectors.toList());
     }
 
-    // ── Pending-request queries (for in-app notifications) ─────────────────
+    // ── Pending-request queries are disabled (approval flow removed) ───────
 
     /**
      * Returns PENDING relationships where the given user is the recipient
@@ -211,22 +225,8 @@ public class RelationshipService {
      */
     @Transactional(readOnly = true)
     public List<RelationshipResponse> getIncomingPendingRequests(UUID userId) {
-        User user = loadActiveUser(userId);
-        List<ElderChildRelationship> incoming;
-
-        if (user.getRole() == Role.ELDER) {
-            incoming = relationshipRepository
-                    .findByElderIdAndStatusAndRequestedByIdNot(
-                            userId, RelationshipStatus.PENDING, userId);
-        } else {
-            incoming = relationshipRepository
-                    .findByChildIdAndStatusAndRequestedByIdNot(
-                            userId, RelationshipStatus.PENDING, userId);
-        }
-
-        return incoming.stream()
-                .map(RelationshipResponse::from)
-                .collect(Collectors.toList());
+        loadActiveUser(userId);
+        return List.of();
     }
 
     /**
@@ -235,11 +235,8 @@ public class RelationshipService {
      */
     @Transactional(readOnly = true)
     public List<RelationshipResponse> getSentPendingRequests(UUID userId) {
-        return relationshipRepository
-                .findByStatusAndRequestedById(RelationshipStatus.PENDING, userId)
-                .stream()
-                .map(RelationshipResponse::from)
-                .collect(Collectors.toList());
+        loadActiveUser(userId);
+        return List.of();
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

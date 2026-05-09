@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
 import { LabReportResponse } from '../../types';
-import { COLORS, FONT_SIZE, RADIUS, SPACING, SHADOW } from '../../theme';
 
 interface Props {
   report: LabReportResponse;
@@ -30,6 +30,9 @@ export default function LabReportCard({ report }: Props) {
           </Text>
           {report.notes && (
             <Text style={styles.notes}>📝 {report.notes}</Text>
+          )}
+          {report.prescription && (
+            <Text style={styles.prescription}>💊 Prescription: {report.prescription}</Text>
           )}
         </View>
       </View>
@@ -63,6 +66,12 @@ const styles = StyleSheet.create({
     color: COLORS.subtext,
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  prescription: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.text,
+    marginTop: 4,
+    fontWeight: '600',
   },
   fileBtn: {
     backgroundColor: '#E3F2FD',

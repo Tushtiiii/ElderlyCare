@@ -88,6 +88,9 @@ public class LabReport {
     @Column(name = "notes", length = 500)
     private String notes;
 
+    @Column(name = "prescription", length = 2000)
+    private String prescription;
+
     // ── Audit Timestamps ─────────────────────────────────────────────────────
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
