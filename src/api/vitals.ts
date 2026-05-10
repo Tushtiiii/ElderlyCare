@@ -1,14 +1,21 @@
 import {
-  Page,
-  VitalRecordRequest,
-  VitalRecordResponse,
-  VitalType,
+    Page,
+    VitalRecordRequest,
+    VitalRecordResponse,
+    VitalType,
 } from '../types';
 import apiClient from './client';
 
 /** POST /api/vitals — record a new vital reading */
 export const recordVital = (data: VitalRecordRequest): Promise<VitalRecordResponse> =>
   apiClient.post<VitalRecordResponse>('/api/vitals', data).then(r => r.data);
+
+/** PUT /api/vitals/:vitalId — update an existing vital reading */
+export const updateVital = (
+  vitalId: string,
+  data: VitalRecordRequest,
+): Promise<VitalRecordResponse> =>
+  apiClient.put<VitalRecordResponse>(`/api/vitals/${vitalId}`, data).then(r => r.data);
 
 /** GET /api/vitals/elder/:id — paginated history for an elder */
 export const getVitalsByElder = (

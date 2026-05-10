@@ -1,0 +1,435 @@
+{
+  "info": {
+    "name": "Elderly Care API - Demo",
+    "description": "Postman collection for testing Elderly Care application with demo accounts",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Authentication endpoints",
+      "item": [
+        {
+          "name": "Register - Elder",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"elder_token\", jsonData.token);",
+                  "    pm.environment.set(\"elder_id\", jsonData.userId);",
+                  "    console.log('Elder registered:', jsonData.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"name\\\": \\\"John Anderson\\\",\\n  \\\"email\\\": \\\"elder.demo@example.com\\\",\\n  \\\"password\\\": \\\"DemoPass@123\\\",\\n  \\\"phone\\\": \\\"+1234567890\\\",\\n  \\\"role\\\": \\\"ELDER\\\",\\n  \\\"dateOfBirth\\\": \\\"1950-05-15\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register - Guardian",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"guardian_token\", jsonData.token);",
+                  "    pm.environment.set(\"guardian_id\", jsonData.userId);",
+                  "    console.log('Guardian registered:', jsonData.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"name\\\": \\\"Sarah Anderson\\\",\\n  \\\"email\\\": \\\"guardian.demo@example.com\\\",\\n  \\\"password\\\": \\\"DemoPass@123\\\",\\n  \\\"phone\\\": \\\"+1234567891\\\",\\n  \\\"role\\\": \\\"CHILD\\\",\\n  \\\"dateOfBirth\\\": \\\"1975-08-20\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register - Doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"doctor_token\", jsonData.token);",
+                  "    pm.environment.set(\"doctor_id\", jsonData.userId);",
+                  "    console.log('Doctor registered:', jsonData.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"name\\\": \\\"Dr. Michael Smith\\\",\\n  \\\"email\\\": \\\"doctor.demo@example.com\\\",\\n  \\\"password\\\": \\\"DemoPass@123\\\",\\n  \\\"phone\\\": \\\"+1234567892\\\",\\n  \\\"role\\\": \\\"DOCTOR\\\",\\n  \\\"dateOfBirth\\\": \\\"1970-03-10\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register - Pathologist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"pathologist_token\", jsonData.token);",
+                  "    pm.environment.set(\"pathologist_id\", jsonData.userId);",
+                  "    console.log('Pathologist registered:', jsonData.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"name\\\": \\\"Dr. Emily Johnson\\\",\\n  \\\"email\\\": \\\"pathologist.demo@example.com\\\",\\n  \\\"password\\\": \\\"DemoPass@123\\\",\\n  \\\"phone\\\": \\\"+1234567893\\\",\\n  \\\"role\\\": \\\"PATHOLOGIST\\\",\\n  \\\"dateOfBirth\\\": \\\"1972-11-25\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login - Elder",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"elder_token\", jsonData.token);",
+                  "    console.log('Elder login successful');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"email\\\": \\\"elder.demo@example.com\\\",\\n  \\\"password\\\": \\\"DemoPass@123\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login - Guardian",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"guardian_token\", jsonData.token);",
+                  "    console.log('Guardian login successful');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"email\\\": \\\"guardian.demo@example.com\\\",\\n  \\\"password\\\": \\\"DemoPass@123\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User profile endpoints",
+      "item": [
+        {
+          "name": "Get Current User (Elder)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{elder_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
+            }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{guardian_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{elder_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{elder_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Relationships",
+      "description": "Relationship management endpoints",
+      "item": [
+        {
+          "name": "Request Relationship (Guardian → Elder)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{guardian_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"targetUserEmail\\\": \\\"elder.demo@example.com\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/relationships/request",
+              "host": ["{{base_url}}"],
+              "path": ["api", "relationships", "request"]
+            }
+          }
+        },
+        {
+          "name": "Get Pending Relationships",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{elder_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/relationships/pending",
+              "host": ["{{base_url}}"],
+              "path": ["api", "relationships", "pending"]
+            }
+          }
+        },
+        {
+          "name": "Approve Relationship",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{elder_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/relationships/{relationshipId}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "relationships", "{relationshipId}", "approve"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vitals",
+      "description": "Vital signs endpoints",
+      "item": [
+        {
+          "name": "Record Vital (Elder)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{elder_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"vitalType\\\": \\\"BLOOD_PRESSURE\\\",\\n  \\\"value\\\": 120,\\n  \\\"unit\\\": \\\"mmHg\\\",\\n  \\\"notes\\\": \\\"Demo vital recording\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/vitals",
+              "host": ["{{base_url}}"],
+              "path": ["api", "vitals"]
+            }
+          }
+        },
+        {
+          "name": "Get Vitals (Guardian)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{guardian_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/vitals?elderId={{elder_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "vitals"],
+              "query": [
+                {
+                  "key": "elderId",
+                  "value": "{{elder_id}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "elder_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "guardian_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "doctor_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pathologist_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "elder_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "guardian_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "doctor_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pathologist_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

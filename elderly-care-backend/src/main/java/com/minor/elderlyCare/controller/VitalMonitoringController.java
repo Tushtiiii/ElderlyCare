@@ -1,23 +1,32 @@
 package com.minor.elderlyCare.controller;
 
-import com.minor.elderlyCare.dto.request.VitalRecordRequest;
-import com.minor.elderlyCare.dto.response.VitalRecordResponse;
-import com.minor.elderlyCare.model.VitalType;
-import com.minor.elderlyCare.security.CustomUserPrincipal;
-import com.minor.elderlyCare.service.VitalMonitoringService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
+import com.minor.elderlyCare.dto.request.VitalRecordRequest;
+import com.minor.elderlyCare.dto.response.VitalRecordResponse;
+import com.minor.elderlyCare.model.VitalType;
+import com.minor.elderlyCare.security.CustomUserPrincipal;
+import com.minor.elderlyCare.service.VitalMonitoringService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 /**
  * REST controller for vital-sign monitoring.
@@ -115,5 +124,28 @@ public class VitalMonitoringController {
 
         return ResponseEntity.ok(
                 vitalMonitoringService.getVitalsTrend(elderId, type, from, to, principal.getUser()));
+    }
+
+    /**
+     * Update an existing vital sign record.
+     *
+     * Example request:
+     * PUT /api/vitals/{vitalId}
+     * {
+     *   "value": 150.0,
+     *   "secondaryValue": 95.0,
+     *   "notes": "Corrected measurement",
+     *   "recordedAt": "2026-03-03T10:30:00Z"
+     * }
+     */
+    @PutMapping("/{vitalId}")
+    public ResponseEntity<VitalRecordResponse> updateVital(
+            @PathVariable UUID vitalId,
+            @Valid @RequestBody VitalRecordRequest request,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+
+        VitalRecordResponse response = vitalMonitoringService.updateVital(
+                vitalId, request, principal.getUser());
+        return ResponseEntity.ok(response);
     }
 }

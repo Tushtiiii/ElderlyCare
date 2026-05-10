@@ -22,12 +22,13 @@ type Nav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen() {
   const navigation = useNavigation<Nav>();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
@@ -46,6 +47,20 @@ export default function LoginScreen() {
       Alert.alert('Login Failed', msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      await googleLogin();
+      // Navigation handled automatically by AppNavigator (token becomes non-null)
+    } catch (err: any) {
+      console.error('[LoginScreen] Google login error:', err);
+      const msg = 'Google Sign-in failed. Please try again.';
+      Alert.alert('Sign-in Failed', msg);
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -110,6 +125,29 @@ export default function LoginScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.btnText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Google Sign-In Button */}
+          <TouchableOpacity
+            style={[styles.googleBtn, googleLoading && styles.btnDisabled]}
+            onPress={handleGoogleLogin}
+            disabled={googleLoading}
+            activeOpacity={0.8}>
+            {googleLoading ? (
+              <ActivityIndicator color="#1F2937" />
+            ) : (
+              <>
+                <Text style={styles.googleBtnIcon}>🔐</Text>
+                <Text style={styles.googleBtnText}>Sign in with Google</Text>
+              </>
             )}
           </TouchableOpacity>
 
@@ -190,6 +228,43 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.6 },
   btnText: { color: '#fff', fontSize: FONT_SIZE.md, fontWeight: '700' },
+
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: SPACING.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    marginHorizontal: SPACING.md,
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.subtext,
+    fontWeight: '600',
+  },
+
+  googleBtn: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  googleBtnIcon: {
+    fontSize: 18,
+  },
+  googleBtnText: {
+    color: '#1F2937',
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
+  },
 
   linkRow: { alignItems: 'center', marginTop: SPACING.md },
   linkText: { fontSize: FONT_SIZE.sm, color: COLORS.subtext },

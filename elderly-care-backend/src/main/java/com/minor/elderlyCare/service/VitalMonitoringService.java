@@ -1,19 +1,25 @@
 package com.minor.elderlyCare.service;
 
-import com.minor.elderlyCare.dto.request.VitalRecordRequest;
-import com.minor.elderlyCare.dto.response.VitalRecordResponse;
-import com.minor.elderlyCare.model.*;
-import com.minor.elderlyCare.repository.VitalRecordRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
+import com.minor.elderlyCare.dto.request.VitalRecordRequest;
+import com.minor.elderlyCare.dto.response.VitalRecordResponse;
+import com.minor.elderlyCare.model.AlertSeverity;
+import com.minor.elderlyCare.model.HealthAlert;
+import com.minor.elderlyCare.model.User;
+import com.minor.elderlyCare.model.VitalRecord;
+import com.minor.elderlyCare.model.VitalType;
+import com.minor.elderlyCare.repository.VitalRecordRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service for recording and querying vital signs.
@@ -26,20 +32,33 @@ import java.util.UUID;
 @Slf4j
 public class VitalMonitoringService {
 
-    private final VitalRecordRepository vitalRecordRepository;
-    private final ElderAccessService elderAccessService;
-    private final HealthAlertService healthAlertService;
-
+    /** Internal result holder for abnormal-value checks. */
+    private record AbnormalResult(boolean isAbnormal, AlertSeverity severity, String message) {
+        static AbnormalResult normal() {
+            return new AbnormalResult(false, null, null);
+        }
+        static AbnormalResult warning(String msg) {
+            return new AbnormalResult(true, AlertSeverity.WARNING, msg);
+        }
+        static AbnormalResult critical(String msg) {
+            return new AbnormalResult(true, AlertSeverity.CRITICAL, msg);
+        }
+    }
     // ── Abnormal Thresholds ──────────────────────────────────────────────────
     // Critical thresholds (beyond these → CRITICAL alert)
     private static final double BP_SYSTOLIC_CRISIS    = 180.0;
     private static final double BP_DIASTOLIC_CRISIS   = 120.0;
+
     private static final double BLOOD_SUGAR_CRITICAL_LOW  = 54.0;
     private static final double BLOOD_SUGAR_CRITICAL_HIGH = 300.0;
     private static final double HEART_RATE_CRITICAL_LOW   = 40.0;
     private static final double HEART_RATE_CRITICAL_HIGH  = 150.0;
     private static final double O2_CRITICAL               = 90.0;
     private static final double TEMP_CRITICAL_HIGH        = 103.0;
+    private final VitalRecordRepository vitalRecordRepository;
+    private final ElderAccessService elderAccessService;
+
+    private final HealthAlertService healthAlertService;
 
     /**
      * Record a new vital sign measurement.
@@ -83,6 +102,56 @@ public class VitalMonitoringService {
         return VitalRecordResponse.from(saved);
     }
 
+    /**
+     * Update an existing vital sign measurement.
+     * Re-evaluates abnormal status and updates alerts as needed.
+     */
+    @Transactional
+    public VitalRecordResponse updateVital(UUID vitalId, VitalRecordRequest request, User currentUser) {
+        // Retrieve existing vital record
+        VitalRecord record = vitalRecordRepository.findById(vitalId)
+                .orElseThrow(() -> new IllegalStateException("Vital record not found: " + vitalId));
+
+        // Verify access: user must be the elder or a linked guardian
+        elderAccessService.validateAccessAndGetElder(record.getElder().getId(), currentUser);
+
+        // Validate blood-pressure has diastolic value
+        if (record.getVitalType() == VitalType.BLOOD_PRESSURE && request.getSecondaryValue() == null) {
+            throw new IllegalStateException("Diastolic value (secondaryValue) is required for blood pressure");
+        }
+
+        // Update fields
+        record.setValue(request.getValue());
+        record.setSecondaryValue(request.getSecondaryValue());
+        record.setUnit(request.getUnit());
+        record.setNotes(request.getNotes());
+        record.setRecordedAt(request.getRecordedAt());
+
+        // Re-check for abnormal values
+        AbnormalResult abnormalResult = checkAbnormal(record.getVitalType(),
+                request.getValue(), request.getSecondaryValue());
+        boolean wasAbnormal = record.isAbnormal();
+        record.setAbnormal(abnormalResult.isAbnormal);
+
+        VitalRecord saved = vitalRecordRepository.save(record);
+
+        // Handle alert updates
+        if (!wasAbnormal && abnormalResult.isAbnormal) {
+            // Newly abnormal — create alert
+            log.warn("Abnormal vital detected after update for elder {}: {} = {} {}",
+                    record.getElder().getId(), record.getVitalType(),
+                    request.getValue(), request.getUnit());
+
+            healthAlertService.createAlertFromVital(saved, abnormalResult.severity, abnormalResult.message);
+        } else if (wasAbnormal && !abnormalResult.isAbnormal) {
+            // No longer abnormal — resolve any existing alerts
+            log.info("Vital returned to normal after update for elder {}: {}", 
+                    record.getElder().getId(), record.getVitalType());
+        }
+
+        return VitalRecordResponse.from(saved);
+    }
+
     /** Get all vitals for an elder (paginated). */
     @Transactional(readOnly = true)
     public Page<VitalRecordResponse> getVitals(UUID elderId, User currentUser, Pageable pageable) {
@@ -111,6 +180,10 @@ public class VitalMonitoringService {
                 .toList();
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Abnormal value detection
+    // ══════════════════════════════════════════════════════════════════════════
+
     /** Vitals in a date range (for trend graphs). */
     @Transactional(readOnly = true)
     public List<VitalRecordResponse> getVitalsTrend(UUID elderId, VitalType type,
@@ -123,10 +196,6 @@ public class VitalMonitoringService {
                 .map(VitalRecordResponse::from)
                 .toList();
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Abnormal value detection
-    // ══════════════════════════════════════════════════════════════════════════
 
     private AbnormalResult checkAbnormal(VitalType type, double value, Double secondaryValue) {
         return switch (type) {
@@ -228,18 +297,5 @@ public class VitalMonitoringService {
                     String.format("WARNING: Temperature %.1f°F — below normal range.", tempF));
         }
         return AbnormalResult.normal();
-    }
-
-    /** Internal result holder for abnormal-value checks. */
-    private record AbnormalResult(boolean isAbnormal, AlertSeverity severity, String message) {
-        static AbnormalResult normal() {
-            return new AbnormalResult(false, null, null);
-        }
-        static AbnormalResult warning(String msg) {
-            return new AbnormalResult(true, AlertSeverity.WARNING, msg);
-        }
-        static AbnormalResult critical(String msg) {
-            return new AbnormalResult(true, AlertSeverity.CRITICAL, msg);
-        }
     }
 }

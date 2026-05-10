@@ -1,14 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useState,
 } from 'react';
 import * as AuthAPI from '../api/auth';
 import * as UsersAPI from '../api/users';
+import * as GoogleAuthService from '../services/googleAuthService';
 import { AuthResponse, LoginRequest, RegisterRequest, UserResponse } from '../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -21,6 +22,8 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
+  googleLogin: () => Promise<void>;
+  googleRegister: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -81,8 +84,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [applyAuth],
   );
 
+  const googleLogin = useCallback(async () => {
+    const googleAuth = await GoogleAuthService.signInWithGoogle();
+    const res = await AuthAPI.googleLogin({ idToken: googleAuth.idToken });
+    await applyAuth(res);
+  }, [applyAuth]);
+
+  const googleRegister = useCallback(async () => {
+    const googleAuth = await GoogleAuthService.signInWithGoogle();
+    const res = await AuthAPI.googleRegister({ idToken: googleAuth.idToken });
+    await applyAuth(res);
+  }, [applyAuth]);
+
   const logout = useCallback(async () => {
     try {
+      await GoogleAuthService.signOutFromGoogle();
       await AsyncStorage.removeItem('auth_token');
     } catch {
       // Ignore storage errors; still clear in-memory session so user is logged out.
@@ -98,8 +114,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ token, user, isLoading, login, register, logout, refreshUser }),
-    [token, user, isLoading, login, register, logout, refreshUser],
+    () => ({ token, user, isLoading, login, register, googleLogin, googleRegister, logout, refreshUser }),
+    [token, user, isLoading, login, register, googleLogin, googleRegister, logout, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

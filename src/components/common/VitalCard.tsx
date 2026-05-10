@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
 import { VitalRecordResponse } from '../../types';
-import { COLORS, FONT_SIZE, RADIUS, SPACING, SHADOW } from '../../theme';
 
 const VITAL_ICONS: Record<string, string> = {
   BLOOD_SUGAR: '🩸',
@@ -14,9 +14,10 @@ const VITAL_ICONS: Record<string, string> = {
 interface Props {
   vital: VitalRecordResponse;
   compact?: boolean;
+  onEdit?: (vital: VitalRecordResponse) => void;
 }
 
-export default function VitalCard({ vital, compact = false }: Props) {
+export default function VitalCard({ vital, compact = false, onEdit }: Props) {
   const icon = VITAL_ICONS[vital.vitalType] ?? '📊';
   const displayValue =
     vital.vitalType === 'BLOOD_PRESSURE' && vital.secondaryValue
@@ -30,42 +31,53 @@ export default function VitalCard({ vital, compact = false }: Props) {
         SHADOW.small,
         vital.isAbnormal && styles.abnormal,
       ]}>
-      <View style={styles.row}>
-        <Text style={styles.icon}>{icon}</Text>
-        <View style={styles.info}>
-          <Text style={styles.typeName}>
-            {vital.vitalTypeDisplayName}
-          </Text>
-          {!compact && (
-            <Text style={styles.time}>
-              {new Date(vital.recordedAt).toLocaleString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+      <View style={styles.cardContent}>
+        <View style={styles.row}>
+          <Text style={styles.icon}>{icon}</Text>
+          <View style={styles.info}>
+            <Text style={styles.typeName}>
+              {vital.vitalTypeDisplayName}
             </Text>
-          )}
+            {!compact && (
+              <Text style={styles.time}>
+                {new Date(vital.recordedAt).toLocaleString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </Text>
+            )}
+          </View>
+          <View style={styles.valueCol}>
+            <Text
+              style={[
+                styles.value,
+                vital.isAbnormal && styles.abnormalText,
+              ]}>
+              {displayValue}
+            </Text>
+            <Text style={styles.unit}>{vital.unit}</Text>
+          </View>
         </View>
-        <View style={styles.valueCol}>
-          <Text
-            style={[
-              styles.value,
-              vital.isAbnormal && styles.abnormalText,
-            ]}>
-            {displayValue}
-          </Text>
-          <Text style={styles.unit}>{vital.unit}</Text>
-        </View>
+        {vital.isAbnormal && (
+          <View style={styles.abnormalBadge}>
+            <Text style={styles.abnormalBadgeText}>⚠ Abnormal</Text>
+          </View>
+        )}
+        {!compact && vital.notes ? (
+          <Text style={styles.notes}>📝 {vital.notes}</Text>
+        ) : null}
       </View>
-      {vital.isAbnormal && (
-        <View style={styles.abnormalBadge}>
-          <Text style={styles.abnormalBadgeText}>⚠ Abnormal</Text>
-        </View>
+
+      {onEdit && !compact && (
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => onEdit(vital)}
+          activeOpacity={0.7}>
+          <Text style={styles.editButtonText}>✏️ Edit</Text>
+        </TouchableOpacity>
       )}
-      {!compact && vital.notes ? (
-        <Text style={styles.notes}>📝 {vital.notes}</Text>
-      ) : null}
     </View>
   );
 }
@@ -80,6 +92,9 @@ const styles = StyleSheet.create({
   abnormal: {
     borderLeftWidth: 4,
     borderLeftColor: COLORS.danger,
+  },
+  cardContent: {
+    flex: 1,
   },
   row: { flexDirection: 'row', alignItems: 'center' },
   icon: { fontSize: 28, marginRight: SPACING.sm },
@@ -108,5 +123,18 @@ const styles = StyleSheet.create({
     color: COLORS.subtext,
     marginTop: SPACING.xs,
     fontStyle: 'italic',
+  },
+  editButton: {
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+  },
+  editButtonText: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
+    color: COLORS.white,
   },
 });
