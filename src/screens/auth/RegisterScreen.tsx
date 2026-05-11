@@ -14,7 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { sendOtp, verifyOtp } from '../../api/auth';
+// import { sendOtp, verifyOtp } from '../../api/auth';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
 import { AuthStackParamList, Role } from '../../types';
@@ -136,9 +136,8 @@ export default function RegisterScreen() {
     if (!value.trim()) {
       return 'Name is required';
     }
-    const wordCount = value.trim().split(/\s+/).length;
-    if (wordCount < 3) {
-      return 'Name must contain at least 3 words';
+    if (value.trim().length < 3) {
+      return 'Name must be at least 3 letters';
     }
     return undefined;
   };
@@ -189,10 +188,11 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = async () => {
-    if (!emailVerified) {
-      Alert.alert('Email Not Verified', 'Please verify your email with OTP first.');
-      return;
-    }
+    // TODO: OTP verification commented out for now
+    // if (!emailVerified) {
+    //   Alert.alert('Email Not Verified', 'Please verify your email with OTP first.');
+    //   return;
+    // }
 
     if (!validateForm()) {
       return;
@@ -463,34 +463,32 @@ export default function RegisterScreen() {
           {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
 
           {/* Email */}
-          <Text style={styles.label}>Email Address * {emailVerified && '✓'}</Text>
-          <View style={styles.emailRow}>
-            <TextInput
-              style={[styles.input, styles.emailInput, errors.email && styles.inputError, emailVerified && styles.inputSuccess]}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor={COLORS.disabled}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="next"
-              editable={!emailVerified}
-            />
-            {!emailVerified && (
-              <TouchableOpacity
-                style={[styles.otpBtn, otpLoading && styles.btnDisabled]}
-                onPress={handleSendOtp}
-                disabled={otpLoading || !email.trim() || !!errors.email}
-                activeOpacity={0.8}>
-                <Text style={styles.otpBtnText}>{otpLoading ? '...' : 'Send OTP'}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <Text style={styles.label}>Email Address *</Text>
+          <TextInput
+            style={[styles.input, errors.email && styles.inputError]}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            placeholderTextColor={COLORS.disabled}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="next"
+          />
+          {/* OTP Send button commented out for now */}
+          {/* {!emailVerified && (
+            <TouchableOpacity
+              style={[styles.otpBtn, otpLoading && styles.btnDisabled]}
+              onPress={handleSendOtp}
+              disabled={otpLoading || !email.trim() || !!errors.email}
+              activeOpacity={0.8}>
+              <Text style={styles.otpBtnText}>{otpLoading ? '...' : 'Send OTP'}</Text>
+            </TouchableOpacity>
+          )} */}
           {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-          {/* OTP Input */}
-          {showOtpInput && !emailVerified && (
+          {/* OTP Input - Commented out for now */}
+          {/* {showOtpInput && !emailVerified && (
             <>
               <Text style={styles.label}>Verification Code</Text>
               <View style={styles.otpContainer}>
@@ -522,7 +520,7 @@ export default function RegisterScreen() {
                 </TouchableOpacity>
               )}
             </>
-          )}
+          )} */}
 
           {/* Password */}
           <Text style={styles.label}>Password * (min 8 chars)</Text>

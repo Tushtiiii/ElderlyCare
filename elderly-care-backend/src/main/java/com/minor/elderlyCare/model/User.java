@@ -66,7 +66,7 @@ public class User {
 
     // ── Core Fields ──────────────────────────────────────────────────────────
     @NotBlank
-    @Size(min = 2, max = 100)
+    @Size(min = 3, max = 100)
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 

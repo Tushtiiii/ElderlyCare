@@ -50,9 +50,9 @@ interface VerifyOtpResponse {
 }
 
 /** POST /api/auth/send-otp */
-export const sendOtp = (data: SendOtpRequest): Promise<SendOtpResponse> =>
-  apiClient.post<SendOtpResponse>('/api/auth/send-otp', data).then(r => r.data);
+// export const sendOtp = (data: SendOtpRequest): Promise<SendOtpResponse> =>
+//   apiClient.post<SendOtpResponse>('/api/auth/send-otp', data).then(r => r.data);
 
 /** POST /api/auth/verify-otp */
-export const verifyOtp = (data: VerifyOtpRequest): Promise<VerifyOtpResponse> =>
-  apiClient.post<VerifyOtpResponse>('/api/auth/verify-otp', data).then(r => r.data);
+// export const verifyOtp = (data: VerifyOtpRequest): Promise<VerifyOtpResponse> =>
+//   apiClient.post<VerifyOtpResponse>('/api/auth/verify-otp', data).then(r => r.data);

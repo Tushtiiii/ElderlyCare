@@ -1,41 +1,25 @@
 -- ============================================================================= 
--- Demo Data Seeding Script
--- Elderly Care System - Demo Accounts
--- Database: PostgreSQL
--- 
--- This file inserts demo accounts for testing all system roles:
--- ELDER, CHILD (Guardian), DOCTOR, PATHOLOGIST
---
--- IMPORTANT: Update the password hashes as needed. Passwords are BCrypt hashed.
--- To generate a BCrypt hash, use: https://bcrypt-generator.com/
--- Demo Password: DemoPass@123
--- BCrypt Hash (bcrypt rounds=10): $2a$10$slYQmyNdGzin7olVv76p2OPST9/PgBkqquzi.Ee1MxTlE8qcTuE2G
+-- Fresh Demo Data Initialization
+-- Elderly Care System - Demo Accounts Setup
 -- ============================================================================= 
 
 BEGIN;
 
--- Delete existing demo data (optional - uncomment if you want to reset)
--- DELETE FROM vital_records WHERE elder_id IN (
---     'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d',
---     'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2e'
--- );
--- DELETE FROM elder_child_relationship WHERE elder_id = 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d';
--- DELETE FROM users WHERE email IN ('elder.demo@example.com', 'guardian.demo@example.com', 'doctor.demo@example.com', 'pathologist.demo@example.com');
+-- First, ensure demo users exist (delete if exists to start fresh)
+DELETE FROM users WHERE email IN (
+    'elder.demo@example.com',
+    'guardian.demo@example.com',
+    'doctor.demo@example.com',
+    'pathologist.demo@example.com'
+);
 
 -- ============================================================================= 
--- 1. ELDER Account (Patient)
+-- Create Demo Users
 -- ============================================================================= 
+
+-- ELDER Account
 INSERT INTO users (
-    id, 
-    name, 
-    email, 
-    password_hash, 
-    phone, 
-    role, 
-    date_of_birth, 
-    is_active, 
-    created_at, 
-    updated_at
+    id, name, email, password_hash, phone, role, date_of_birth, is_active, created_at, updated_at
 ) VALUES (
     'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID,
     'John Anderson',
@@ -47,22 +31,11 @@ INSERT INTO users (
     TRUE,
     NOW(),
     NOW()
-) ON CONFLICT (email) DO NOTHING;
+);
 
--- ============================================================================= 
--- 2. GUARDIAN/CHILD Account (Caregiver)
--- ============================================================================= 
+-- GUARDIAN/CHILD Account
 INSERT INTO users (
-    id, 
-    name, 
-    email, 
-    password_hash, 
-    phone, 
-    role, 
-    date_of_birth, 
-    is_active, 
-    created_at, 
-    updated_at
+    id, name, email, password_hash, phone, role, date_of_birth, is_active, created_at, updated_at
 ) VALUES (
     'b2c3d4e5-f6a7-4b5c-ad8e-7f8a6b5c4d3e'::UUID,
     'Sarah Anderson',
@@ -74,22 +47,11 @@ INSERT INTO users (
     TRUE,
     NOW(),
     NOW()
-) ON CONFLICT (email) DO NOTHING;
+);
 
--- ============================================================================= 
--- 3. DOCTOR Account
--- ============================================================================= 
+-- DOCTOR Account
 INSERT INTO users (
-    id, 
-    name, 
-    email, 
-    password_hash, 
-    phone, 
-    role, 
-    date_of_birth, 
-    is_active, 
-    created_at, 
-    updated_at
+    id, name, email, password_hash, phone, role, date_of_birth, is_active, created_at, updated_at
 ) VALUES (
     'c3d4e5f6-a7b8-5c6d-be9f-8a9b7c6d5e4f'::UUID,
     'Dr. Michael Smith',
@@ -101,22 +63,11 @@ INSERT INTO users (
     TRUE,
     NOW(),
     NOW()
-) ON CONFLICT (email) DO NOTHING;
+);
 
--- ============================================================================= 
--- 4. PATHOLOGIST Account
--- ============================================================================= 
+-- PATHOLOGIST Account
 INSERT INTO users (
-    id, 
-    name, 
-    email, 
-    password_hash, 
-    phone, 
-    role, 
-    date_of_birth, 
-    is_active, 
-    created_at, 
-    updated_at
+    id, name, email, password_hash, phone, role, date_of_birth, is_active, created_at, updated_at
 ) VALUES (
     'd4e5f6a7-b8c9-6d7e-cf0a-9bac8d7e6f5a'::UUID,
     'Dr. Emily Johnson',
@@ -128,19 +79,18 @@ INSERT INTO users (
     TRUE,
     NOW(),
     NOW()
-) ON CONFLICT (email) DO NOTHING;
+);
 
 -- ============================================================================= 
--- 5. ELDER-GUARDIAN RELATIONSHIP
+-- Create Elder-Guardian Relationship
 -- ============================================================================= 
+
+DELETE FROM elder_child_relationship 
+WHERE elder_id = 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID 
+AND child_id = 'b2c3d4e5-f6a7-4b5c-ad8e-7f8a6b5c4d3e'::UUID;
+
 INSERT INTO elder_child_relationship (
-    id,
-    elder_id,
-    child_id,
-    status,
-    requested_by,
-    created_at,
-    updated_at
+    id, elder_id, child_id, status, requested_by, created_at, updated_at
 ) VALUES (
     'e5f6a7b8-c9da-7e8f-d01b-acbdaebf0c6a'::UUID,
     'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID,
@@ -149,13 +99,20 @@ INSERT INTO elder_child_relationship (
     'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID,
     NOW(),
     NOW()
-) ON CONFLICT (elder_id, child_id) DO NOTHING;
+);
 
 -- ============================================================================= 
--- 6. DEMO VITAL RECORDS (Last 30 days of data)
+-- Delete existing demo vitals (optional - clean slate)
 -- ============================================================================= 
 
--- Blood Sugar readings (mg/dL) - 8 readings
+DELETE FROM vital_records 
+WHERE elder_id = 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID;
+
+-- ============================================================================= 
+-- Insert Demo Vital Records (Last 30 days)
+-- ============================================================================= 
+
+-- Blood Sugar readings (mg/dL)
 INSERT INTO vital_records (id, elder_id, vital_type, value, unit, notes, recorded_at, is_abnormal, created_at, updated_at)
 VALUES 
     ('11111111-1111-1111-1111-111111111101'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'BLOOD_SUGAR', 110, 'mg/dL', 'Fasting', NOW() - INTERVAL '28 days', FALSE, NOW(), NOW()),
@@ -167,7 +124,7 @@ VALUES
     ('11111111-1111-1111-1111-111111111107'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'BLOOD_SUGAR', 105, 'mg/dL', 'Fasting', NOW() - INTERVAL '10 days', FALSE, NOW(), NOW()),
     ('11111111-1111-1111-1111-111111111108'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'BLOOD_SUGAR', 128, 'mg/dL', 'Post-meal', NOW() - INTERVAL '7 days', FALSE, NOW(), NOW());
 
--- Blood Pressure readings (mmHg) - 8 readings
+-- Blood Pressure readings (mmHg)
 INSERT INTO vital_records (id, elder_id, vital_type, value, secondary_value, unit, notes, recorded_at, is_abnormal, created_at, updated_at)
 VALUES 
     ('22222222-2222-2222-2222-222222222201'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'BLOOD_PRESSURE', 128, 82, 'mmHg', 'At rest', NOW() - INTERVAL '29 days', FALSE, NOW(), NOW()),
@@ -179,7 +136,7 @@ VALUES
     ('22222222-2222-2222-2222-222222222207'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'BLOOD_PRESSURE', 129, 81, 'mmHg', 'At rest', NOW() - INTERVAL '11 days', FALSE, NOW(), NOW()),
     ('22222222-2222-2222-2222-222222222208'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'BLOOD_PRESSURE', 136, 86, 'mmHg', 'Morning', NOW() - INTERVAL '8 days', FALSE, NOW(), NOW());
 
--- Heart Rate readings (bpm) - 8 readings
+-- Heart Rate readings (bpm)
 INSERT INTO vital_records (id, elder_id, vital_type, value, unit, notes, recorded_at, is_abnormal, created_at, updated_at)
 VALUES 
     ('33333333-3333-3333-3333-333333333301'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'HEART_RATE', 72, 'bpm', 'Resting', NOW() - INTERVAL '27 days', FALSE, NOW(), NOW()),
@@ -191,7 +148,7 @@ VALUES
     ('33333333-3333-3333-3333-333333333307'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'HEART_RATE', 70, 'bpm', 'Resting', NOW() - INTERVAL '9 days', FALSE, NOW(), NOW()),
     ('33333333-3333-3333-3333-333333333308'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'HEART_RATE', 79, 'bpm', 'After walk', NOW() - INTERVAL '6 days', FALSE, NOW(), NOW());
 
--- Oxygen Saturation readings (%) - 8 readings
+-- Oxygen Saturation readings (%)
 INSERT INTO vital_records (id, elder_id, vital_type, value, unit, notes, recorded_at, is_abnormal, created_at, updated_at)
 VALUES 
     ('44444444-4444-4444-4444-444444444401'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'OXYGEN_SATURATION', 97, '%', 'At rest', NOW() - INTERVAL '30 days', FALSE, NOW(), NOW()),
@@ -199,38 +156,29 @@ VALUES
     ('44444444-4444-4444-4444-444444444403'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'OXYGEN_SATURATION', 98, '%', 'At rest', NOW() - INTERVAL '25 days', FALSE, NOW(), NOW()),
     ('44444444-4444-4444-4444-444444444404'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'OXYGEN_SATURATION', 93, '%', 'After activity', NOW() - INTERVAL '22 days', TRUE, NOW(), NOW()),
     ('44444444-4444-4444-4444-444444444405'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'OXYGEN_SATURATION', 97, '%', 'At rest', NOW() - INTERVAL '19 days', FALSE, NOW(), NOW()),
-    ('44444444-4444-4444-4444-444444444406'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'OXYGEN_SATURATION', 96, '%', 'At rest', NOW() - INTERVAL '16 days', FALSE, NOW(), NOW()),
+    ('44444444-4444-4444-4444-444444444406'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'OXYGEN_SATURATION', 95, '%', 'At rest', NOW() - INTERVAL '16 days', FALSE, NOW(), NOW()),
     ('44444444-4444-4444-4444-444444444407'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'OXYGEN_SATURATION', 98, '%', 'At rest', NOW() - INTERVAL '13 days', FALSE, NOW(), NOW()),
     ('44444444-4444-4444-4444-444444444408'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'OXYGEN_SATURATION', 97, '%', 'At rest', NOW() - INTERVAL '10 days', FALSE, NOW(), NOW());
 
--- Temperature readings (°C) - 8 readings
+-- Temperature readings (°C)
 INSERT INTO vital_records (id, elder_id, vital_type, value, unit, notes, recorded_at, is_abnormal, created_at, updated_at)
 VALUES 
-    ('55555555-5555-5555-5555-555555555501'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 37.1, '°C', 'Oral', NOW() - INTERVAL '31 days', FALSE, NOW(), NOW()),
-    ('55555555-5555-5555-5555-555555555502'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 37.5, '°C', 'Oral', NOW() - INTERVAL '29 days', FALSE, NOW(), NOW()),
-    ('55555555-5555-5555-5555-555555555503'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 36.8, '°C', 'Oral', NOW() - INTERVAL '26 days', FALSE, NOW(), NOW()),
-    ('55555555-5555-5555-5555-555555555504'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 38.5, '°C', 'Oral', NOW() - INTERVAL '23 days', TRUE, NOW(), NOW()),
-    ('55555555-5555-5555-5555-555555555505'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 37.2, '°C', 'Oral', NOW() - INTERVAL '20 days', FALSE, NOW(), NOW()),
-    ('55555555-5555-5555-5555-555555555506'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 37.0, '°C', 'Oral', NOW() - INTERVAL '17 days', FALSE, NOW(), NOW()),
-    ('55555555-5555-5555-5555-555555555507'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 37.3, '°C', 'Oral', NOW() - INTERVAL '14 days', FALSE, NOW(), NOW()),
-    ('55555555-5555-5555-5555-555555555508'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 37.1, '°C', 'Oral', NOW() - INTERVAL '11 days', FALSE, NOW(), NOW());
+    ('55555555-5555-5555-5555-555555555501'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 36.8, '°C', 'Morning', NOW() - INTERVAL '31 days', FALSE, NOW(), NOW()),
+    ('55555555-5555-5555-5555-555555555502'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 37.1, '°C', 'Afternoon', NOW() - INTERVAL '28 days', FALSE, NOW(), NOW()),
+    ('55555555-5555-5555-5555-555555555503'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 36.9, '°C', 'Morning', NOW() - INTERVAL '25 days', FALSE, NOW(), NOW()),
+    ('55555555-5555-5555-5555-555555555504'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 38.2, '°C', 'Evening', NOW() - INTERVAL '22 days', TRUE, NOW(), NOW()),
+    ('55555555-5555-5555-5555-555555555505'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 37.0, '°C', 'Morning', NOW() - INTERVAL '19 days', FALSE, NOW(), NOW()),
+    ('55555555-5555-5555-5555-555555555506'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 36.7, '°C', 'Afternoon', NOW() - INTERVAL '16 days', FALSE, NOW(), NOW()),
+    ('55555555-5555-5555-5555-555555555507'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 37.2, '°C', 'Morning', NOW() - INTERVAL '13 days', FALSE, NOW(), NOW()),
+    ('55555555-5555-5555-5555-555555555508'::UUID, 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID, 'TEMPERATURE', 36.9, '°C', 'Afternoon', NOW() - INTERVAL '10 days', FALSE, NOW(), NOW());
+
+-- ============================================================================= 
+-- Commit Transaction
+-- ============================================================================= 
 
 COMMIT;
 
--- ============================================================================= 
--- Verification Queries
--- Run these to verify the demo accounts were created successfully
--- ============================================================================= 
--- SELECT * FROM users WHERE email IN (
---     'elder.demo@example.com',
---     'guardian.demo@example.com',
---     'doctor.demo@example.com',
---     'pathologist.demo@example.com'
--- ) ORDER BY role;
---
--- SELECT COUNT(*) as total_vital_records FROM vital_records 
---     WHERE elder_id = 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d';
---
--- SELECT vital_type, COUNT(*) FROM vital_records 
---     WHERE elder_id = 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'
---     GROUP BY vital_type;
+-- Verify data was inserted
+SELECT COUNT(*) as total_vitals FROM vital_records WHERE elder_id = 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID;
+SELECT COUNT(*) as total_users FROM users WHERE email IN ('elder.demo@example.com', 'guardian.demo@example.com', 'doctor.demo@example.com', 'pathologist.demo@example.com');
+SELECT COUNT(*) as relationships FROM elder_child_relationship WHERE elder_id = 'a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d'::UUID;
