@@ -38,7 +38,7 @@ public class DemoDataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        String elderEmail = "elder.demo@elderlycare.app";
+        String elderEmail = "elder.demo@example.com";
         if (userRepository.existsByEmailIgnoreCase(elderEmail)) {
             return;
         }
@@ -46,7 +46,7 @@ public class DemoDataSeeder implements CommandLineRunner {
         User elder = User.builder()
                 .name("Elder Demo")
                 .email(elderEmail)
-                .passwordHash(passwordEncoder.encode("Password@123"))
+                .passwordHash(passwordEncoder.encode("DemoPass@123"))
                 .phone("+1111111111")
                 .role(Role.ELDER)
                 .dateOfBirth(LocalDate.of(1950, 5, 18))
@@ -54,8 +54,8 @@ public class DemoDataSeeder implements CommandLineRunner {
 
         User child = User.builder()
                 .name("Child Demo")
-                .email("child.demo@elderlycare.app")
-                .passwordHash(passwordEncoder.encode("Password@123"))
+                .email("guardian.demo@example.com")
+                .passwordHash(passwordEncoder.encode("DemoPass@123"))
                 .phone("+1222222222")
                 .role(Role.CHILD)
                 .dateOfBirth(LocalDate.of(1990, 3, 12))
@@ -63,8 +63,8 @@ public class DemoDataSeeder implements CommandLineRunner {
 
         User doctor = User.builder()
                 .name("Doctor Demo")
-                .email("doctor.demo@elderlycare.app")
-                .passwordHash(passwordEncoder.encode("Password@123"))
+                .email("doctor.demo@example.com")
+                .passwordHash(passwordEncoder.encode("DemoPass@123"))
                 .phone("+1333333333")
                 .role(Role.DOCTOR)
                 .dateOfBirth(LocalDate.of(1985, 11, 2))
@@ -72,8 +72,8 @@ public class DemoDataSeeder implements CommandLineRunner {
 
         User pathologist = User.builder()
                 .name("Pathologist Demo")
-                .email("pathologist.demo@elderlycare.app")
-                .passwordHash(passwordEncoder.encode("Password@123"))
+                .email("pathologist.demo@example.com")
+                .passwordHash(passwordEncoder.encode("DemoPass@123"))
                 .phone("+1444444444")
                 .role(Role.PATHOLOGIST)
                 .dateOfBirth(LocalDate.of(1987, 8, 21))

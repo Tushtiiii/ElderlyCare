@@ -70,7 +70,7 @@ export const getVitalTrend = (
 ): Promise<VitalRecordResponse[]> =>
   apiClient
     .get<VitalRecordResponse[]>(`/api/vitals/elder/${elderId}/trend`, {
-      params: { vitalType, from, to },
+      params: { type: vitalType, from, to },
     })
     .then(r => r.data);
 

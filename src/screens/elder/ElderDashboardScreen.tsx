@@ -4,6 +4,8 @@ import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
+    Dimensions,
+    FlatList,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -11,12 +13,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
 
 import { acknowledgeAlert, getActiveAlerts } from '../../api/alerts';
 import { getLabReports } from '../../api/labReports';
 import { getActiveMedicationsForElder } from '../../api/medications';
 import { getElderNetwork } from '../../api/relationships';
-import { getLatestVitals } from '../../api/vitals';
+import { getLatestVitals, getVitalTrend } from '../../api/vitals';
 import {
     AlertBanner,
     EmptyState,
@@ -35,9 +38,20 @@ import {
     MedicationResponse,
     RelationshipResponse,
     VitalRecordResponse,
+    VitalType,
 } from '../../types';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
+
+const VITAL_FILTERS: { label: string; value: VitalType }[] = [
+  { label: '💉 BP', value: 'BLOOD_PRESSURE' },
+  { label: '🩸 Sugar', value: 'BLOOD_SUGAR' },
+  { label: '❤️ HR', value: 'HEART_RATE' },
+  { label: '🫁 O₂', value: 'OXYGEN_SATURATION' },
+  { label: '🌡️ Temp', value: 'TEMPERATURE' },
+];
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function ElderDashboardScreen() {
   const navigation = useNavigation<Nav>();
@@ -50,28 +64,34 @@ export default function ElderDashboardScreen() {
   const [careTeam, setCareTeam] = useState<RelationshipResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [graphType, setGraphType] = useState<VitalType>('BLOOD_PRESSURE');
+  const [trendData, setTrendData] = useState<VitalRecordResponse[]>([]);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
     try {
-      const [v, a, m, network, reportsPage] = await Promise.all([
+      const to = new Date().toISOString();
+      const from30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const [v, a, m, network, reportsPage, trend] = await Promise.all([
         getLatestVitals(user.id),
         getActiveAlerts(user.id),
         getActiveMedicationsForElder(user.id),
         getElderNetwork(user.id),
         getLabReports(user.id, 0, 30),
+        getVitalTrend(user.id, graphType, from30d, to),
       ]);
       setVitals(v);
       setAlerts(a);
       setMedications(m);
       setCareTeam(network);
+      setTrendData(trend);
       setPrescriptionHistory(
         reportsPage.content.filter(
           report => !!report.prescription && report.prescription.trim().length > 0,
         ),
       );
     } catch {}
-  }, [user]);
+  }, [user, graphType]);
 
   useEffect(() => {
     (async () => {
@@ -182,6 +202,85 @@ export default function ElderDashboardScreen() {
         />
       </View>
 
+      {/* Vitals Trend Graph */}
+      <Text style={styles.sectionTitle}>📈 Vitals Trend (Last 30 Days)</Text>
+      <View style={[styles.graphCard, SHADOW.small]}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={VITAL_FILTERS}
+          keyExtractor={item => item.value}
+          contentContainerStyle={styles.filterRow}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.filterChip, graphType === item.value && styles.filterChipActive]}
+              onPress={() => setGraphType(item.value)}
+              activeOpacity={0.7}>
+              <Text style={[styles.filterChipText, graphType === item.value && styles.filterChipTextActive]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+        {trendData.length < 2 ? (
+          <EmptyState
+            icon="📊"
+            message="Not enough data yet"
+            hint="Record at least 2 readings or pull to refresh"
+          />
+        ) : (() => {
+          const chartData = trendData.slice(-10);
+          const values = chartData.map(d => d.value);
+          const min = Math.min(...values);
+          const max = Math.max(...values);
+          const avg = values.reduce((a, b) => a + b, 0) / values.length;
+          const labels = chartData.map(d =>
+            new Date(d.recordedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          );
+          return (
+            <>
+              <LineChart
+                data={{ labels, datasets: [{ data: values, color: () => COLORS.primary, strokeWidth: 2 }] }}
+                width={SCREEN_WIDTH - SPACING.md * 4}
+                height={200}
+                yAxisLabel=""
+                yAxisSuffix=""
+                chartConfig={{
+                  backgroundColor: COLORS.card,
+                  backgroundGradientFrom: COLORS.card,
+                  backgroundGradientTo: COLORS.card,
+                  decimalPlaces: 1,
+                  color: () => COLORS.primary,
+                  labelColor: () => COLORS.subtext,
+                  propsForDots: { r: '4', strokeWidth: '2', stroke: COLORS.primary, fill: COLORS.card },
+                  propsForBackgroundLines: { strokeDasharray: '4,4', stroke: COLORS.border },
+                }}
+                bezier
+                style={{ borderRadius: RADIUS.md, marginVertical: SPACING.sm }}
+              />
+              <View style={styles.graphStats}>
+                <View style={styles.statBox}>
+                  <Text style={styles.statLabel}>Min</Text>
+                  <Text style={styles.statValue}>{min.toFixed(1)}</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statLabel}>Avg</Text>
+                  <Text style={styles.statValue}>{avg.toFixed(1)}</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statLabel}>Max</Text>
+                  <Text style={styles.statValue}>{max.toFixed(1)}</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statLabel}>Readings</Text>
+                  <Text style={styles.statValue}>{trendData.length}</Text>
+                </View>
+              </View>
+            </>
+          );
+        })()}
+      </View>
+
       {/* Quick Actions */}
       <Text style={styles.sectionTitle}>Quick Actions</Text>
       <View style={styles.actionsGrid}>
@@ -261,6 +360,41 @@ export default function ElderDashboardScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: COLORS.background },
   container: { padding: SPACING.md, paddingBottom: SPACING.xl },
+  graphCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  filterRow: {
+    gap: SPACING.xs,
+    marginBottom: SPACING.sm,
+    paddingRight: SPACING.sm,
+  },
+  filterChip: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 7,
+    borderRadius: RADIUS.full,
+    backgroundColor: '#ECEFF1',
+  },
+  filterChipActive: { backgroundColor: COLORS.primary },
+  filterChipText: { fontSize: FONT_SIZE.xs, fontWeight: '600', color: COLORS.subtext },
+  filterChipTextActive: { color: '#fff' },
+  graphStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SPACING.xs,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.sm,
+    paddingVertical: SPACING.sm,
+    marginHorizontal: 2,
+  },
+  statLabel: { fontSize: 10, color: COLORS.subtext, fontWeight: '500', marginBottom: 2 },
+  statValue: { fontSize: FONT_SIZE.sm, fontWeight: '700', color: COLORS.primary },
   banner: {
     backgroundColor: '#7B1FA2',
     borderRadius: RADIUS.lg,
