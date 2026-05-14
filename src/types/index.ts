@@ -33,6 +33,20 @@ export interface AuthResponse {
   expiresIn: number;
 }
 
+export interface GoogleAuthRequest {
+  idToken: string;
+  pushToken?: string;
+}
+
+export interface GoogleRegisterRequest {
+  idToken: string;
+  role: Role;
+  name?: string;
+  phone?: string;
+  dateOfBirth?: string;
+  pushToken?: string;
+}
+
 export interface RelationshipResponse {
   id: string;
   elder: UserResponse;
@@ -138,6 +152,7 @@ export interface Page<T> {
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  CompleteProfile: { idToken: string };
 };
 
 export type ElderTabParamList = {

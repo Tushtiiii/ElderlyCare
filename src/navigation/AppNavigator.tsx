@@ -19,6 +19,7 @@ import {
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import CompleteProfileScreen from '../screens/auth/CompleteProfileScreen';
 
 // Shared screens
 import ProfileScreen from '../screens/main/ProfileScreen';
@@ -76,6 +77,7 @@ function AuthNavigator() {
       }}>
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
+      <AuthStack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
     </AuthStack.Navigator>
   );
 }

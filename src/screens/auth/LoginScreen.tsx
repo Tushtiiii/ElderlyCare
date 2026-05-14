@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../../context/AuthContext';
+import { extractGoogleIdToken, useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { AuthStackParamList } from '../../types';
 import { COLORS, FONT_SIZE, RADIUS, SPACING, SHADOW } from '../../theme';
 
@@ -22,12 +23,14 @@ type Nav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen() {
   const navigation = useNavigation<Nav>();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
+  const { promptAsync, response, isReady, hasClientId, useProxy } = useGoogleAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
@@ -48,6 +51,60 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+
+  const handleGoogleSignIn = async (idToken: string) => {
+    setGoogleLoading(true);
+    try {
+      await googleLogin({ idToken });
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        navigation.navigate('CompleteProfile', { idToken });
+        return;
+      }
+      const msg =
+        err?.response?.data?.detail ??
+        err?.response?.data?.message ??
+        'Google sign-in failed. Please try again.';
+      Alert.alert('Google Sign-In Failed', msg);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const startGoogleFlow = async () => {
+    if (!hasClientId) {
+      Alert.alert(
+        'Google Sign-In not configured',
+        'Missing Google client ID for this platform. Check your .env.local file.',
+      );
+      return;
+    }
+    if (!isReady) {
+      Alert.alert('Please wait', 'Google Sign-In is still initializing.');
+      return;
+    }
+    await promptAsync({ useProxy });
+  };
+
+  useEffect(() => {
+    if (!response) {
+      return;
+    }
+    if (response.type === 'error') {
+      Alert.alert(
+        'Google Sign-In Failed',
+        response.params?.error_description ?? 'Please try again.',
+      );
+      return;
+    }
+
+    const idToken = extractGoogleIdToken(response);
+    if (!idToken) {
+      Alert.alert('Google Sign-In Failed', 'No ID token returned by Google.');
+      return;
+    }
+    handleGoogleSignIn(idToken);
+  }, [response]);
 
   return (
     <KeyboardAvoidingView
@@ -110,6 +167,24 @@ export default function LoginScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.btnText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.googleBtn, googleLoading && styles.btnDisabled]}
+            onPress={startGoogleFlow}
+            disabled={googleLoading}
+            activeOpacity={0.8}>
+            {googleLoading ? (
+              <ActivityIndicator color={COLORS.primary} />
+            ) : (
+              <Text style={styles.googleBtnText}>Continue with Google</Text>
             )}
           </TouchableOpacity>
 
@@ -190,6 +265,32 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.6 },
   btnText: { color: '#fff', fontSize: FONT_SIZE.md, fontWeight: '700' },
+
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  dividerText: {
+    marginHorizontal: SPACING.sm,
+    color: COLORS.subtext,
+    fontSize: FONT_SIZE.sm,
+  },
+  googleBtn: {
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  googleBtnText: {
+    color: COLORS.primary,
+    fontSize: FONT_SIZE.md,
+    fontWeight: '700',
+  },
 
   linkRow: { alignItems: 'center', marginTop: SPACING.md },
   linkText: { fontSize: FONT_SIZE.sm, color: COLORS.subtext },

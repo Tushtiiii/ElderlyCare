@@ -9,7 +9,14 @@ import React, {
 } from 'react';
 import * as AuthAPI from '../api/auth';
 import * as UsersAPI from '../api/users';
-import { AuthResponse, LoginRequest, RegisterRequest, UserResponse } from '../types';
+import {
+  AuthResponse,
+  GoogleAuthRequest,
+  GoogleRegisterRequest,
+  LoginRequest,
+  RegisterRequest,
+  UserResponse,
+} from '../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface AuthState {
@@ -21,6 +28,8 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
+  googleLogin: (data: GoogleAuthRequest) => Promise<void>;
+  googleRegister: (data: GoogleRegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -81,6 +90,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [applyAuth],
   );
 
+  const googleLogin = useCallback(
+    async (data: GoogleAuthRequest) => {
+      const res = await AuthAPI.googleLogin(data);
+      await applyAuth(res);
+    },
+    [applyAuth],
+  );
+
+  const googleRegister = useCallback(
+    async (data: GoogleRegisterRequest) => {
+      const res = await AuthAPI.googleRegister(data);
+      await applyAuth(res);
+    },
+    [applyAuth],
+  );
+
   const logout = useCallback(async () => {
     try {
       await AsyncStorage.removeItem('auth_token');
@@ -98,8 +123,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ token, user, isLoading, login, register, logout, refreshUser }),
-    [token, user, isLoading, login, register, logout, refreshUser],
+    () => ({
+      token,
+      user,
+      isLoading,
+      login,
+      register,
+      googleLogin,
+      googleRegister,
+      logout,
+      refreshUser,
+    }),
+    [
+      token,
+      user,
+      isLoading,
+      login,
+      register,
+      googleLogin,
+      googleRegister,
+      logout,
+      refreshUser,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

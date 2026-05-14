@@ -1,5 +1,7 @@
 package com.minor.elderlyCare.controller;
 
+import com.minor.elderlyCare.dto.request.GoogleAuthRequest;
+import com.minor.elderlyCare.dto.request.GoogleRegisterRequest;
 import com.minor.elderlyCare.dto.request.LoginRequest;
 import com.minor.elderlyCare.dto.request.RegisterRequest;
 import com.minor.elderlyCare.dto.response.AuthResponse;
@@ -42,5 +44,31 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(
             @Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    /**
+     * POST /api/auth/google
+     * Sign in with an existing account using a Google ID token.
+     * The token is verified against Google's public keys on the backend.
+     * Returns 200 OK with a JWT Bearer token.
+     */
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> googleLogin(
+            @Valid @RequestBody GoogleAuthRequest request) {
+        return ResponseEntity.ok(authService.googleLogin(request));
+    }
+
+    /**
+     * POST /api/auth/google/register
+     * Create a new account using a Google ID token.
+     * Fails with 409 if the email is already registered.
+     * Returns 201 Created with a JWT Bearer token.
+     */
+    @PostMapping("/google/register")
+    public ResponseEntity<AuthResponse> googleRegister(
+            @Valid @RequestBody GoogleRegisterRequest request) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(authService.googleRegister(request));
     }
 }

@@ -1,7 +1,7 @@
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,25 +16,22 @@ import {
 } from 'react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import { extractGoogleIdToken, useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../../theme';
 import { AuthStackParamList, Role } from '../../types';
 
-type Nav = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
+type Nav = NativeStackNavigationProp<AuthStackParamList, 'CompleteProfile'>;
 
-export default function RegisterScreen() {
+export default function CompleteProfileScreen() {
   const navigation = useNavigation<Nav>();
-  const { register, googleLogin } = useAuth();
-  const { promptAsync, response, isReady, hasClientId, useProxy } = useGoogleAuth();
+  const route = useRoute();
+  const { idToken } = (route.params ?? {}) as AuthStackParamList['CompleteProfile'];
+  const { googleRegister } = useAuth();
+
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [role, setRole] = useState<Role | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [showDobPicker, setShowDobPicker] = useState(false);
 
   const onDobChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -47,46 +44,31 @@ export default function RegisterScreen() {
     }
   };
 
-  const handleRegister = async () => {
-    if (!name.trim() || !email.trim() || !password || !role) {
-      Alert.alert(
-        'Missing fields',
-        'Name, email, password and role are required.',
-      );
+  const handleCompleteProfile = async () => {
+    if (!idToken) {
+      Alert.alert('Missing session', 'Please try Google Sign-In again.');
+      navigation.navigate('Login');
       return;
     }
-    if (password.length < 8) {
-      Alert.alert('Weak password', 'Password must be at least 8 characters.');
+    if (!role) {
+      Alert.alert('Missing role', 'Please choose a role to continue.');
       return;
     }
-    if (
-      dateOfBirth &&
-      !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)
-    ) {
-      Alert.alert(
-        'Invalid date',
-        'Date of birth must be in YYYY-MM-DD format.',
-      );
+    if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
+      Alert.alert('Invalid date', 'Date of birth must be in YYYY-MM-DD format.');
       return;
     }
 
     setLoading(true);
     try {
-      await register({
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        phone: phone.trim() || undefined,
+      await googleRegister({
+        idToken,
         role,
+        name: name.trim() || undefined,
+        phone: phone.trim() || undefined,
         dateOfBirth: dateOfBirth || undefined,
       });
-      // AppNavigator picks up the new token automatically
     } catch (err: any) {
-      console.error('[RegisterScreen] registration error:', err);
-      if (err?.response) {
-        console.error('[RegisterScreen] response status:', err.response.status);
-        console.error('[RegisterScreen] response data:', JSON.stringify(err.response.data));
-      }
       const errors = err?.response?.data?.errors;
       if (errors) {
         const msgs = Object.values(errors).join('\n');
@@ -103,60 +85,6 @@ export default function RegisterScreen() {
     }
   };
 
-  const handleGoogleSignIn = async (idToken: string) => {
-    setGoogleLoading(true);
-    try {
-      await googleLogin({ idToken });
-    } catch (err: any) {
-      if (err?.response?.status === 404) {
-        navigation.navigate('CompleteProfile', { idToken });
-        return;
-      }
-      const msg =
-        err?.response?.data?.detail ??
-        err?.response?.data?.message ??
-        'Google sign-in failed. Please try again.';
-      Alert.alert('Google Sign-In Failed', msg);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const startGoogleFlow = async () => {
-    if (!hasClientId) {
-      Alert.alert(
-        'Google Sign-In not configured',
-        'Missing Google client ID for this platform. Check your .env.local file.',
-      );
-      return;
-    }
-    if (!isReady) {
-      Alert.alert('Please wait', 'Google Sign-In is still initializing.');
-      return;
-    }
-    await promptAsync({ useProxy });
-  };
-
-  useEffect(() => {
-    if (!response) {
-      return;
-    }
-    if (response.type === 'error') {
-      Alert.alert(
-        'Google Sign-In Failed',
-        response.params?.error_description ?? 'Please try again.',
-      );
-      return;
-    }
-
-    const idToken = extractGoogleIdToken(response);
-    if (!idToken) {
-      Alert.alert('Google Sign-In Failed', 'No ID token returned by Google.');
-      return;
-    }
-    handleGoogleSignIn(idToken);
-  }, [response]);
-
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -164,24 +92,21 @@ export default function RegisterScreen() {
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled">
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.appTitle}>🏥 Elderly Care</Text>
-          <Text style={styles.subtitle}>Create your account</Text>
+          <Text style={styles.subtitle}>Complete your profile</Text>
         </View>
 
-        {/* Card */}
         <View style={[styles.card, SHADOW.medium]}>
-          <Text style={styles.title}>Register</Text>
+          <Text style={styles.title}>Almost there</Text>
+          <Text style={styles.hint}>
+            Choose your role and add any optional details.
+          </Text>
 
-          {/* Role Selector */}
           <Text style={styles.label}>I am a…</Text>
           <View style={styles.roleRow}>
             <TouchableOpacity
-              style={[
-                styles.roleBtn,
-                role === 'ELDER' && styles.roleBtnActive,
-              ]}
+              style={[styles.roleBtn, role === 'ELDER' && styles.roleBtnActive]}
               onPress={() => setRole('ELDER')}
               activeOpacity={0.8}>
               <Text style={styles.roleIcon}>👴</Text>
@@ -202,10 +127,7 @@ export default function RegisterScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.roleBtn,
-                role === 'CHILD' && styles.roleBtnActive,
-              ]}
+              style={[styles.roleBtn, role === 'CHILD' && styles.roleBtnActive]}
               onPress={() => setRole('CHILD')}
               activeOpacity={0.8}>
               <Text style={styles.roleIcon}>👨‍👩‍👦</Text>
@@ -225,12 +147,8 @@ export default function RegisterScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* Doctor */}
             <TouchableOpacity
-              style={[
-                styles.roleBtn,
-                role === 'DOCTOR' && styles.roleBtnActive,
-              ]}
+              style={[styles.roleBtn, role === 'DOCTOR' && styles.roleBtnActive]}
               onPress={() => setRole('DOCTOR')}
               activeOpacity={0.8}>
               <Text style={styles.roleIcon}>👨‍⚕️</Text>
@@ -250,7 +168,6 @@ export default function RegisterScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* Pathologist */}
             <TouchableOpacity
               style={[
                 styles.roleBtn,
@@ -276,8 +193,7 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Name */}
-          <Text style={styles.label}>Full Name *</Text>
+          <Text style={styles.label}>Name (optional)</Text>
           <TextInput
             style={styles.input}
             value={name}
@@ -288,40 +204,6 @@ export default function RegisterScreen() {
             returnKeyType="next"
           />
 
-          {/* Email */}
-          <Text style={styles.label}>Email Address *</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            placeholderTextColor={COLORS.disabled}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="next"
-          />
-
-          {/* Password */}
-          <Text style={styles.label}>Password * (min 8 chars)</Text>
-          <View style={styles.passwordRow}>
-            <TextInput
-              style={[styles.input, styles.passwordInput]}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              placeholderTextColor={COLORS.disabled}
-              secureTextEntry={!showPassword}
-              returnKeyType="next"
-            />
-            <TouchableOpacity
-              style={styles.eyeBtn}
-              onPress={() => setShowPassword(v => !v)}>
-              <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Phone */}
           <Text style={styles.label}>Phone Number (optional)</Text>
           <TextInput
             style={styles.input}
@@ -333,7 +215,6 @@ export default function RegisterScreen() {
             returnKeyType="next"
           />
 
-          {/* Date of Birth */}
           <Text style={styles.label}>Date of Birth (optional)</Text>
           <TouchableOpacity
             style={styles.input}
@@ -353,42 +234,21 @@ export default function RegisterScreen() {
             />
           )}
 
-          {/* Submit */}
           <TouchableOpacity
             style={[styles.btn, loading && styles.btnDisabled]}
-            onPress={handleRegister}
+            onPress={handleCompleteProfile}
             disabled={loading}
             activeOpacity={0.8}>
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.btnText}>Create Account</Text>
+              <Text style={styles.btnText}>Finish Google Sign-Up</Text>
             )}
           </TouchableOpacity>
 
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.googleBtn, googleLoading && styles.btnDisabled]}
-            onPress={startGoogleFlow}
-            disabled={googleLoading}
-            activeOpacity={0.8}>
-            {googleLoading ? (
-              <ActivityIndicator color={COLORS.primary} />
-            ) : (
-              <Text style={styles.googleBtnText}>Continue with Google</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Login')}
-            style={styles.linkRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.linkRow}>
             <Text style={styles.linkText}>
-              Already have an account?{' '}
+              Back to{' '}
               <Text style={styles.linkAccent}>Sign In</Text>
             </Text>
           </TouchableOpacity>
@@ -414,6 +274,11 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xl,
     fontWeight: '700',
     color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  hint: {
+    fontSize: FONT_SIZE.sm,
+    color: COLORS.subtext,
     marginBottom: SPACING.md,
   },
 
@@ -434,10 +299,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     backgroundColor: '#F8FAFC',
   },
-  passwordRow: { position: 'relative' },
-  passwordInput: { paddingRight: 50 },
-  eyeBtn: { position: 'absolute', right: 12, top: Platform.OS === 'ios' ? 12 : 10 },
-  eyeText: { fontSize: 18 },
 
   // Role selector
   roleRow: {
@@ -478,32 +339,6 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.6 },
   btnText: { color: '#fff', fontSize: FONT_SIZE.md, fontWeight: '700' },
-
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
-  dividerText: {
-    marginHorizontal: SPACING.sm,
-    color: COLORS.subtext,
-    fontSize: FONT_SIZE.sm,
-  },
-  googleBtn: {
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  googleBtnText: {
-    color: COLORS.primary,
-    fontSize: FONT_SIZE.md,
-    fontWeight: '700',
-  },
 
   linkRow: { alignItems: 'center', marginTop: SPACING.md },
   linkText: { fontSize: FONT_SIZE.sm, color: COLORS.subtext },
